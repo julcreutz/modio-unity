@@ -7,7 +7,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Modio.API.SchemaDefinitions{
     [JsonObject(MemberSerialization.Fields)]
-    internal readonly partial struct ImageObject 
+    public readonly partial struct ImageObject 
     {
         /// <summary>Image filename including extension.</summary>
         internal readonly string Filename;

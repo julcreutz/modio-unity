@@ -6,6 +6,7 @@ using Modio.API.SchemaDefinitions;
 using Modio.Caching;
 using Modio.Errors;
 using Modio.Images;
+using Modio.Mods;
 using Modio.Reports;
 
 namespace Modio.Users
@@ -15,7 +16,7 @@ namespace Modio.Users
     /// their avatar, as well as their language and timezone.
     /// </summary>
     [System.Serializable]
-    public class UserProfile : IEquatable<UserProfile>
+    public class UserProfile : IEquatable<UserProfile>, IModioResource
     {
         // Since users are not unique per game, we don't need to invalidate this between shutdowns
         static Dictionary<long, UserProfile> _cache = new Dictionary<long, UserProfile>();
@@ -32,7 +33,8 @@ namespace Modio.Users
         /// <summary>
         ///  This is the unique Id of the user.
         /// </summary>
-        public long UserId { get; internal set; }
+        public ModioId UserId { get; internal set; }
+        ModioId IModioResource.Id => UserId;
 
         /// <summary>
         /// The display name of the user's account they authenticated with. Eg if they authenticated
@@ -52,6 +54,8 @@ namespace Modio.Users
         public string Timezone { get; private set; }
 
         public string Language { get; private set; }
+        
+        public bool IsFollowedByLoggedInUser { get; private set; }
 
         internal UserProfile(UserObject userObject) => ApplyDetailsFromUserObject(userObject);
 
@@ -179,21 +183,21 @@ namespace Modio.Users
 
 #region Following
 
-        public async Task<Error> Follow()
-        {
-            var request = new FollowUserRequest(UserId);
-            (Error error, Response204? _) = await ModioAPI.Followers.FollowUser(User.Current.UserId, request);
-
-            return error;
-        }
-
-        public async Task<Error> Unfollow()
-        {
-            (Error error, Response204? _) = await ModioAPI.Followers.UnfollowUser(User.Current.UserId, UserId);
-
-            return error;
-        }
+        /// <summary>
+        /// Follow this user by the currently logged in user.
+        /// </summary>
+        public Task<Error> Follow() => User.Current.FollowUser(this);
+        /// <summary>
+        /// Unfollow this user by the currently logged in user.
+        /// </summary>
+        public Task<Error> Unfollow() => User.Current.UnfollowUser(this);
 
 #endregion
+
+        internal void SetFollowed(bool isFollowed)
+        {
+            IsFollowedByLoggedInUser = isFollowed;
+            OnProfileUpdated?.Invoke();
+        }
     }
 }

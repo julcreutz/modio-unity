@@ -21,6 +21,7 @@ namespace Modio.API
 
                 using var request = ModioAPIRequest.New($"/games/{{game-id}}/collections/{collectionId}/subscriptions", ModioAPIRequestMethod.Post);
 
+                request.Options.RequireAuthentication();
 
                 return await _apiInterface.GetJson(request);
             }
@@ -33,6 +34,7 @@ namespace Modio.API
 
                 using var request = ModioAPIRequest.New($"/games/{{game-id}}/collections/{collectionId}/subscriptions", ModioAPIRequestMethod.Post);
 
+                request.Options.RequireAuthentication();
 
                 return await _apiInterface.GetJson<ModCollectionObject>(request);
             }

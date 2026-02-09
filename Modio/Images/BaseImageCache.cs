@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using Modio.Errors;
+using Modio.Extensions;
 
 namespace Modio.Images
 {
@@ -139,7 +140,7 @@ namespace Modio.Images
             if (cachedImage == null) return false;
             
             byte[] bytes = ConvertToBytes(cachedImage);
-            ModioClient.DataStorage.WriteCachedImage(uri, bytes);
+            ModioClient.DataStorage.WriteCachedImage(uri, bytes).ForgetTaskSafely();
             return true;
 
         }

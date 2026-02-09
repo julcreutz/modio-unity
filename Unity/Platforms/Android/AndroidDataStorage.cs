@@ -13,7 +13,7 @@ namespace Modio.Unity.Platforms.Android
 
         ~AndroidDataStorage() => AndroidJNI.DetachCurrentThread();
 
-        public override Task<Error> Init()
+        public override async Task<Error> Init()
         {
             GameId = ModioServices.Resolve<ModioSettings>().GameId;
             
@@ -24,7 +24,7 @@ namespace Modio.Unity.Platforms.Android
             if (!DoesDirectoryExist(Root))
                 CreateDirectory(Root);
             
-            UserRoot = Path.Join(ModioServices.Resolve<IModioRootPathProvider>().UserPath, 
+            UserRoot = Path.Join(await ModioServices.Resolve<IModioRootPathProvider>().GetUserPath(), 
                                  $"Modio{Path.DirectorySeparatorChar}{GameId}{Path.DirectorySeparatorChar}");
 
             OngoingTaskCount = 0;
@@ -36,7 +36,7 @@ namespace Modio.Unity.Platforms.Android
             
             MigrateLegacyModInstalls();
 
-            return Task.FromResult(Error.None);
+            return Error.None;
         }
 
         protected override long GetAvailableFreeSpace()

@@ -5,13 +5,14 @@ using UnityEngine.EventSystems;
 
 namespace Modio.Unity.UI.Components
 {
-    public class ModioUIMod : MonoBehaviour, IModioUIPropertiesOwner, IPointerClickHandler, ISubmitHandler
+    public class ModioUIMod : MonoBehaviour, IModioUIPropertiesOwner, IModioUIResourceContainer<Mod>, IPointerClickHandler, ISubmitHandler
     {
         public UnityEvent onModUpdate;
         public UnityEvent<Mod> onClickOrSubmit;
         public UnityEvent<ModioUIMod> onDisplayMoreInfo;
 
         public Mod Mod { get; private set; }
+        Mod IModioUIResourceContainer<Mod>.Resource => Mod;
 
         void OnDestroy()
         {
@@ -33,6 +34,7 @@ namespace Modio.Unity.UI.Components
             Mod.OnModUpdated += OnModUpdated;
             OnModUpdated();
         }
+        void IModioUIResourceContainer<Mod>.SetResource(Mod resource) => SetMod(resource);
 
         void OnModUpdated() => onModUpdate?.Invoke();
 

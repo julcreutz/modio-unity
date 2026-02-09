@@ -369,6 +369,8 @@ namespace Modio.API.HttpClient
             // If we don't have a reauth task, we create one
             else if (ModioServices.Resolve<IModioAuthService>() is { } authService)
             {
+                if(authService is IPotentialModioEmailAuthService {IsEmailPlatform:true,})
+                    return (new Error(ErrorCode.USER_NOT_AUTHENTICATED), default(T)); 
                 // If we have reauth'd within the last 3 seconds, we return an error
                 if ((DateTime.Now - _timeOfLastReauthentication).TotalSeconds < 3)
                 {
@@ -525,10 +527,33 @@ namespace Modio.API.HttpClient
             if (request.Content != null)
             {
                 foreach (var header in request.Content.Headers)
-                    builder.AppendLine($"{header.Key}: {string.Join(", ", header.Value)}");
+                    builder.AppendLine(string.Equals(header.Key, "Authorization")
+                                           ? $"{header.Key}: Bearer (omitted)"
+                                           : $"{header.Key}: {string.Join(", ", header.Value)}");
 
                 builder.AppendLine();
-                builder.Append(await request.Content.ReadAsStringAsync());
+
+                if (request.Content is ByteArrayContent byteContent)
+                {
+                    builder.AppendLine($"Omitting content of type {byteContent.GetType().Name}");
+                }
+                else if (request.Content is MultipartFormDataContent formContent)
+                {
+                    foreach (HttpContent content in formContent)
+                    {
+                        if (content is ByteArrayContent or StreamContent)
+                        {
+                            builder.AppendLine($"Omitting content of type {content.GetType().Name}");
+                            continue;
+                        }
+
+                        builder.Append(await content.ReadAsStringAsync());
+                    }
+                }
+                else
+                {
+                    builder.Append(await request.Content.ReadAsStringAsync());
+                }
             }
 
             ModioLog.Verbose.Log(builder.ToString());

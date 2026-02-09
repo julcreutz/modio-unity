@@ -113,7 +113,7 @@ namespace Modio.Unity
                         await handler.WaitForComplete();
                         Stream jsonResponseStream = handler.GetStream();
                         var streamReader = new StreamReader(jsonResponseStream);
-                        error = await GetErrorAndLogBadResponse(streamReader);
+                        error = await GetErrorAndLogBadResponse(responseCode, streamReader);
                         
                         if (allowReauth && error.Code == ErrorCode.EXPIRED_OR_REVOKED_ACCESS_TOKEN)
                             return await ReauthenticateWithResponse(
@@ -207,6 +207,9 @@ namespace Modio.Unity
             // If we don't have a reauth task, we create one
             else if (ModioServices.Resolve<IModioAuthService>() is { } authService)
             {
+                if(authService is IPotentialModioEmailAuthService {IsEmailPlatform:true,})
+                    return (new Error(ErrorCode.USER_NOT_AUTHENTICATED), default(T)); 
+                
                 // If we have attempted to auth within the last 3 seconds, we return an error
                 if ((DateTime.Now - _timeOfLastReauthentication).TotalSeconds < 3)
                 {
@@ -275,7 +278,7 @@ namespace Modio.Unity
                 webRequest.SetRequestHeader(header.Key, header.Value);
             }
             
-            webRequest.SetRequestHeader("User-Agent", Version.GetCurrent());
+            webRequest.SetRequestHeader("User-Agent", $"{Version.GetCurrent()}");
             webRequest.uploadHandler = MapUploadHandler(request);
 
             if (webRequest.uploadHandler == null)
@@ -375,7 +378,7 @@ namespace Modio.Unity
                         || string.IsNullOrEmpty(retryHeader)
                         || !int.TryParse(retryHeader, out int retryAfterSeconds))
                     {
-                        error = GetErrorAndLogBadResponse(jsonResponse);
+                        error = GetErrorAndLogBadResponse(webRequest.responseCode, jsonResponse);
                         
                         if (allowReauth && error.Code == ErrorCode.EXPIRED_OR_REVOKED_ACCESS_TOKEN)
                             return await ReauthenticateWithResponse(() => GetJson(request, reader, false));
@@ -383,7 +386,7 @@ namespace Modio.Unity
                         return (error, default(T));
                     }
 
-                    GetErrorAndLogBadResponse(jsonResponse);
+                    GetErrorAndLogBadResponse(webRequest.responseCode, jsonResponse);
                     return (new RateLimitError(RateLimitErrorCode.RATELIMITED, retryAfterSeconds), default(T));
                 }
 
@@ -401,7 +404,7 @@ namespace Modio.Unity
             }
             catch (Exception e)
             {
-                ModioLog.Error?.Log(e.GetType());
+                ModioLog.Error?.Log(e);
                 return (new Error(ErrorCode.INVALID_JSON), default(T));
             }
             finally
@@ -410,7 +413,7 @@ namespace Modio.Unity
             }
         }
 
-        static async Task<Error> GetErrorAndLogBadResponse(StreamReader streamReader)
+        static async Task<Error> GetErrorAndLogBadResponse(long httpResponseCode, StreamReader streamReader)
         {
             TextReader overrideStream = null;
 
@@ -424,14 +427,14 @@ namespace Modio.Unity
                 if (firstOpenBracketIndex > 0)
                 {
                     string serverError = errorResponse.Substring(0, firstOpenBracketIndex);
-                    ModioLog.Error?.Log($"Unexpected error from server before JSON: {serverError}");
+                    ModioLog.Error?.Log($"HTTP Code: [{httpResponseCode}] Unexpected error from server before JSON: {serverError}");
                     errorResponse = errorResponse.Substring(firstOpenBracketIndex);
                 }
                 else if (firstOpenBracketIndex == -1)
                 {
                     if (errorResponse == "File Not Found") return new Error(ErrorCode.FILE_NOT_FOUND);
 
-                    ModioLog.Error?.Log($"Unexpected error from server instead of JSON: {errorResponse}");
+                    ModioLog.Error?.Log($"HTTP Code: [{httpResponseCode}] Unexpected error from server instead of JSON: {errorResponse}");
                     return new Error(ErrorCode.INVALID_JSON);
                 }
 
@@ -445,16 +448,16 @@ namespace Modio.Unity
                 using var jsonErrorTextReader = new JsonTextReader(overrideStream ?? streamReader);
                 errorToken = new JsonSerializer().Deserialize<ErrorObject>(jsonErrorTextReader);
             }
-            catch (JsonException)
+            catch (JsonException e)
             {
-                ModioLog.Error?.Log($"There is an error with the json response.");
-                return new Error(ErrorCode.INVALID_JSON);
+                ModioLog.Error?.Log($"HTTP Code: [{httpResponseCode}] There is an error with the json response: {e}");
+                return new ErrorException(e, ErrorCode.INVALID_JSON);
             }
 
             if (errorToken.Error.ErrorRef == 0)
             {
                 ModioLog.Error?.Log(
-                    "Invalid error returned from API, please contact mod.io support.\n"
+                    $"HTTP Code: [{httpResponseCode}] Invalid error returned from API, please contact mod.io support.\n"
                     + $"{errorToken.Error.Code}: {errorToken.Error.Message}"
                 );
 
@@ -465,11 +468,11 @@ namespace Modio.Unity
             return new ErrorEmbedded(errorToken.Error);
         }
         
-        static Error GetErrorAndLogBadResponse(string jsonResponse)
+        static Error GetErrorAndLogBadResponse(long httpResponseCode, string jsonResponse)
         {
             if (string.IsNullOrEmpty(jsonResponse))
             {
-                ModioLog.Error?.Log($"There is an error with the json response.");
+                ModioLog.Error?.Log($"HTTP Code: [{httpResponseCode}] Empty json response received. An unknown error has occured.");
                 return new Error(ErrorCode.INVALID_JSON);
             }
             
@@ -481,7 +484,7 @@ namespace Modio.Unity
                 if (firstOpenBracketIndex > 0)
                 {
                     string serverError = jsonResponse.Substring(0, firstOpenBracketIndex);
-                    ModioLog.Verbose?.Log($"Unexpected error from server before JSON: {serverError}");
+                    ModioLog.Verbose?.Log($"HTTP Code: [{httpResponseCode}] Unexpected error from server before JSON: {serverError}");
                     jsonResponse = jsonResponse.Substring(firstOpenBracketIndex);
                 }
             }
@@ -492,16 +495,17 @@ namespace Modio.Unity
                 using var jsonErrorTextReader = new JsonTextReader(sr);
                 errorToken = new JsonSerializer().Deserialize<ErrorObject>(jsonErrorTextReader);
             }
-            catch (JsonException)
+            catch (JsonException e)
             {
-                ModioLog.Error?.Log($"There is an error with the json response.");
-                return new Error(ErrorCode.INVALID_JSON);
+                ModioLog.Error?.Log($"HTTP Code: [{httpResponseCode}] There is an error with the json response: {e}");
+                ModioLog.Verbose?.Log($"Errored JSON Response: {jsonResponse}");
+                return new ErrorException(e, ErrorCode.INVALID_JSON);
             }
             
             if (errorToken.Error.ErrorRef == 0)
             {
                 ModioLog.Error?.Log(
-                    "Invalid error returned from API, please contact mod.io support.\n"
+                    $"HTTP Code: [{httpResponseCode}] Invalid error returned from API, please contact mod.io support.\n"
                     + $"{errorToken.Error.Code}: {errorToken.Error.Message}"
                 );
                 return new ErrorEmbedded(ErrorCode.UNKNOWN,errorToken.Error);
@@ -568,6 +572,8 @@ namespace Modio.Unity
 
             using (var writer = new StreamWriter(formData, new UTF8Encoding(false), 1024, true)) // Keeping stream open
             {
+                writer.NewLine = "\r\n";
+                
                 foreach (KeyValuePair<string, string> formParameter in options.FormParameters)
                 {
                     writer.WriteLine($"--{boundary}");
@@ -725,7 +731,29 @@ namespace Modio.Unity
             {
                 builder.AppendLine($"Content-Type: {request.uploadHandler.contentType}");
                 builder.AppendLine();
-                builder.Append(Encoding.UTF8.GetString(request.uploadHandler.data));
+
+                if (modioRequest?.Options.FileParameters.Count > 0)
+                {
+                    using var stream = new MemoryStream(request.uploadHandler.data);
+                    using var streamReader = new StreamReader(stream, new UTF8Encoding(false));
+                    
+                    string logOutput;
+                    while ((logOutput = streamReader.ReadLine()) != string.Empty)
+                    {
+                        if (string.IsNullOrEmpty(logOutput)
+                            || logOutput.Contains(".zip")
+                            || logOutput.Contains(".png")
+                            || logOutput.Contains(".jpg"))
+                        {
+                            builder.AppendLine($"Omitting file data content of type: {logOutput}");
+                            break;
+                        }
+
+                        builder.AppendLine(logOutput);
+                    }
+                }
+                else
+                    builder.Append(Encoding.UTF8.GetString(request.uploadHandler.data));
             }
             ModioLog.Verbose?.Log(builder.ToString());
 

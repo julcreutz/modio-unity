@@ -1,4 +1,5 @@
 ﻿using System.Threading.Tasks;
+using Modio.Extensions;
 using Modio.Mods;
 using Modio.Unity.UI.Components;
 using UnityEngine;
@@ -47,10 +48,10 @@ namespace Modio.Unity.UI.Panels
 
         public void ConfirmPressed()
         {
-            SubscribeWithDependenciesAndHandleResult();
+            SubscribeWithDependenciesAndHandleResult().ForgetTaskSafely();
         }
 
-        async void SubscribeWithDependenciesAndHandleResult()
+        async Task SubscribeWithDependenciesAndHandleResult()
         {
             Task<Error> subWithDependenciesTask = _modioUIMod.Mod.Subscribe(true);
 

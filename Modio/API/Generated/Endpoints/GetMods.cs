@@ -15,6 +15,7 @@ using Newtonsoft.Json.Linq;
 using Modio.API.SchemaDefinitions;
 using Modio.Errors;
 using Modio.Extensions;
+using Modio.Mods;
 
 namespace Modio.API
 {
@@ -146,7 +147,7 @@ namespace Modio.API
 
                 /// <param name="submittedBy">Unique id of the user who has ownership of the mod.</param>
                 /// <param name="condition"><see cref="Filtering"/></param>
-                public GetModsFilter SubmittedBy(long submittedBy, Filtering condition = Filtering.None)
+                public GetModsFilter SubmittedBy(ModioId submittedBy, Filtering condition = Filtering.None)
                 {
                     Parameters[$"submitted_by{condition.ClearText()}"] = submittedBy;
                     return this;
@@ -154,7 +155,7 @@ namespace Modio.API
 
                 /// <param name="submittedBy">An ICollection of Unique id of the user who has ownership of the mod.</param>
                 /// <param name="condition"><see cref="Filtering"/></param>
-                public GetModsFilter SubmittedBy(ICollection<long> submittedBy, Filtering condition = Filtering.None)
+                public GetModsFilter SubmittedBy(ICollection<ModioId> submittedBy, Filtering condition = Filtering.None)
                 {
                     Parameters[$"submitted_by{condition.ClearText()}"] = submittedBy;
                     return this;
@@ -421,6 +422,15 @@ namespace Modio.API
                 public GetModsFilter SortByStringType(string key, bool ascending = true)
                 {
                     Parameters[$"_sort"] = $"{(ascending ? "" : "-")}{key}";
+                    return this;
+                }
+
+                /// <summary>
+                /// Not actually valid on /mods endpoints, but useful for when we convert to a GetModCollectionsFilter later
+                /// </summary>
+                public GetModsFilter CollectionCategory(string collectionCategory)
+                {
+                    Parameters[$"category"] = collectionCategory;
                     return this;
                 }
             }

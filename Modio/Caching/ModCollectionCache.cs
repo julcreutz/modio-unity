@@ -1,11 +1,12 @@
 ﻿using Modio.API.SchemaDefinitions;
 using Modio.Collections;
+using Modio.Mods;
 
 namespace Modio.Caching
 {
-    internal class ModCollectionCache : BaseCache<ModCollectionCache, ModCollectionId, ModCollection>
+    internal class ModCollectionCache : BaseCache<ModCollectionCache, ModioId, ModCollection>
     {
-        protected override ModCollection OnGetCached(ModCollectionId key) =>
+        protected override ModCollection OnGetCached(ModioId key) =>
             Cached.TryGetValue(key, out ModCollection collection)
                 ? collection
                 : Cached[key] = new ModCollection(key);

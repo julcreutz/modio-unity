@@ -1,4 +1,6 @@
-﻿using Modio.FileIO;
+﻿using System;
+using System.Threading.Tasks;
+using Modio.FileIO;
 using UnityEngine;
 
 namespace Modio.Unity
@@ -15,13 +17,14 @@ namespace Modio.Unity
         /// </returns>
         /// </summary>
         public string Path => Application.persistentDataPath;
-        
+
         /// <summary>
         /// Path to the local user app data folder;
         /// <returns>
         /// Typically returns <c>Application.persistentDataPath</c>
         /// </returns>
         /// </summary>
-        public string UserPath  => System.IO.Path.Combine(Application.persistentDataPath, "UserData");
+        public Task<string> GetUserPath()
+            => Task.FromResult(System.IO.Path.Combine(Application.persistentDataPath, "UserData"));
     }
 }

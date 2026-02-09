@@ -429,7 +429,7 @@ MonoBehaviour:
       type: {class: TmpFontOption, ns: Modio.Unity.UI.Scripts.Themes.Options, asm: Modio.Unity.UI}
       data:
         _option: 12
-        _fontAsset: {fileID: 11400000, guid: 23cc4dc974b15bc43be9ad1e680a2624, type: 2}
+        _fontAsset: {fileID: 11400000, guid: a6487a22895c8aa4ab27e972c4bea7e4, type: 2}
     - rid: 7330996250945781781
       type: {class: TmpFontStyleOption, ns: Modio.Unity.UI.Scripts.Themes.Options,
         asm: Modio.Unity.UI}

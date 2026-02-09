@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 
 namespace Modio.FileIO
 {
@@ -11,10 +12,10 @@ namespace Modio.FileIO
         {
             get;
         }
-        
+
         /// <summary>
-        /// Path of User Data
+        /// Retrieve the path for User Data
         /// </summary>
-        string UserPath { get;}
+        Task<string> GetUserPath();
     }
 }

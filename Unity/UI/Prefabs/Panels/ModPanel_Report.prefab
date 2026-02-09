@@ -197,6 +197,7 @@ GameObject:
   - component: {fileID: 5656710365485554761}
   - component: {fileID: 5656710365485554762}
   - component: {fileID: 5656710365485554773}
+  - component: {fileID: 2596348596992586857}
   m_Layer: 5
   m_Name: ModPanel_Report
   m_TagString: Untagged
@@ -267,6 +268,27 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   onModUpdate:
+    m_PersistentCalls:
+      m_Calls: []
+  onClickOrSubmit:
+    m_PersistentCalls:
+      m_Calls: []
+  onDisplayMoreInfo:
+    m_PersistentCalls:
+      m_Calls: []
+--- !u!114 &2596348596992586857
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5656710365485554766}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 69c87e6de2a3468688e62c8cee3c5e84, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  onCollectionUpdate:
     m_PersistentCalls:
       m_Calls: []
   onClickOrSubmit:
@@ -704,6 +726,46 @@ PrefabInstance:
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 4a66916c60edb3345880ff7e637fc402, type: 3}
+--- !u!114 &5656710364312966001 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 5195210672945538026, guid: 4a66916c60edb3345880ff7e637fc402,
+    type: 3}
+  m_PrefabInstance: {fileID: 475609765965836443}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!1 &5656710365766531978 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 5195210671713749777, guid: 4a66916c60edb3345880ff7e637fc402,
+    type: 3}
+  m_PrefabInstance: {fileID: 475609765965836443}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &7037652237902783236
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5656710365766531978}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 951ff4c46cf24702978110ebaff44084, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _properties:
+  - rid: 6551853948811608095
+  references:
+    version: 2
+    RefIds:
+    - rid: 6551853948811608095
+      type: {class: ModPropertyName, ns: Modio.Unity.UI.Components.ModProperties,
+        asm: Modio.Unity.UI}
+      data:
+        _text: {fileID: 5656710364312966001}
 --- !u!224 &5656710365766531991 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 5195210671713749772, guid: 4a66916c60edb3345880ff7e637fc402,

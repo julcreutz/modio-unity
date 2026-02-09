@@ -103,6 +103,14 @@ namespace Modio
             resolveType.OnNewBinding -= onNewValue;
         }
 
+        public static void RemoveAllBindingsOfType<T>()
+        {
+            if (!Bindings.TryGetValue(typeof(T), out ServiceBindings untypedDependencies))
+                return;
+
+            untypedDependencies.RemoveAllBindings();
+        }
+
 #endregion
 
 #region PublicInterfaces
@@ -119,7 +127,7 @@ namespace Modio
 
             // intended to enable WithInterfaces
             /*internal*/ Binding<T> WithOtherBinding<TOther>(Binding<TOther> binding, Func<bool> condition = null);
-
+            
             IBindType<T> WithInterfaces<TI1>(Func<bool> condition = null);
             IBindType<T> WithInterfaces<TI1, TI2>(Func<bool> condition = null);
             IBindType<T> WithInterfaces<TI1, TI2, TI3>(Func<bool> condition = null);
@@ -139,6 +147,8 @@ namespace Modio
         abstract class ServiceBindings
         {
             public abstract void RemoveAllWithPriority(ModioServicePriority priority);
+
+            public abstract void RemoveAllBindings();
             public abstract int BindingCount { get; }
         }
 
@@ -211,7 +221,9 @@ namespace Modio
                 var binding = new Binding<T>(factory, priority, condition);
                 Bindings.Add(binding);
                 
-                InvokeNewBinding();
+                if(priority > ModioServicePriority.Fallback + 1)
+                    InvokeNewBinding();
+                
                 return binding;
             }
 
@@ -227,6 +239,7 @@ namespace Modio
                 return FromMethod(() => (T)Activator.CreateInstance(type), priority, condition);
             }
 
+            
             public Binding<T> WithOtherBinding<TOther>(Binding<TOther> binding, Func<bool> condition = null)
             {
                 if (!typeof(T).IsAssignableFrom(typeof(TOther)))
@@ -234,9 +247,10 @@ namespace Modio
                     throw new ArgumentException("Type '" + typeof(T).FullName + "' is not assignable to '" + typeof(TOther).FullName + "'");
                 }
                 if(condition == null) condition = binding.Condition;
-                else if (binding.Condition != null)
-                    // ReSharper disable once AccessToModifiedClosure (that's the point)
-                    condition = () => condition() && binding.Condition();
+                else if (binding.Condition != null) {
+                    Func<bool> prevCondition = condition;
+                    condition = () => prevCondition() && binding.Condition();
+                }
                 
                 return FromMethod(() => (T)(object)binding.Resolve(), binding.Priority, condition);
             }
@@ -331,6 +345,8 @@ namespace Modio
                         Bindings.RemoveAt(i);
                 }
             }
+
+            public override void RemoveAllBindings() => Bindings.Clear();
 
             void InvokeNewBinding()
             {

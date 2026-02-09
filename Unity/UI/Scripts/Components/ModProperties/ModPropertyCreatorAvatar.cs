@@ -8,13 +8,13 @@ using UnityEngine.UI;
 namespace Modio.Unity.UI.Components.ModProperties
 {
     [Serializable]
-    public class ModPropertyCreatorAvatar : IModProperty
+    public class ModPropertyCreatorAvatar : ModioResourceProperty
     {
         [SerializeField] RawImage _image;
         [SerializeField] UserProfile.AvatarResolution _resolution = UserProfile.AvatarResolution.X50_Y50;
         LazyImage<Texture2D> _lazyImage;
 
-        public void OnModUpdate(Mod mod)
+        protected override void OnResourceUpdate(IModioInfo resource)
         {
             _lazyImage ??= new LazyImage<Texture2D>(
                 ImageCacheTexture2D.Instance,
@@ -23,7 +23,7 @@ namespace Modio.Unity.UI.Components.ModProperties
                     if (_image != null) _image.texture = texture2D;
                 }
             );
-            _lazyImage.SetImage(mod.Creator.Avatar, _resolution);
+            _lazyImage.SetImage(resource.Creator.Avatar, _resolution);
         }
     }
 }

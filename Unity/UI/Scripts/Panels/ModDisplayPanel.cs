@@ -11,6 +11,7 @@ namespace Modio.Unity.UI.Panels
     public class ModDisplayPanel : ModioPanelBase
     {
         ModioUIMod _modioUIMod;
+        ModioUIUser _modioUIUser;
 
         [SerializeField] UnityEvent _onMoreOptionsPressed;
 
@@ -18,6 +19,7 @@ namespace Modio.Unity.UI.Panels
         {
             base.Awake();
             _modioUIMod = GetComponent<ModioUIMod>();
+            _modioUIUser = GetComponent<ModioUIUser>();
         }
 
         public override void OnGainedFocus(GainedFocusCause selectionBehaviour)
@@ -45,6 +47,7 @@ namespace Modio.Unity.UI.Panels
             OpenPanel();
 
             _modioUIMod.SetMod(mod);
+            _modioUIUser?.SetUser(mod.Creator);
         }
 
         void ReportPressed()

@@ -162,7 +162,8 @@ namespace Modio.Mods
                 dependency.Platforms,
                 dependency.MetadataKvp,
                 dependency.Tags,
-                dependency.Stats
+                dependency.Stats,
+                dependency.Skus
                 );
     }
 }

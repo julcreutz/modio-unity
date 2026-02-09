@@ -7,6 +7,7 @@ namespace Modio.Reports
         public const string GAMES = "games";
         public const string MODS = "mods";
         public const string USERS = "users";
+        public const string COLLECTIONS = "collections";
     }
 
 }

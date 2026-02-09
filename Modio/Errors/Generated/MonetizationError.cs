@@ -17,6 +17,8 @@ namespace Modio.Errors
         USER_MONETIZATION_DISABLED = ErrorCode.USER_MONETIZATION_DISABLED,
         /// <inheritdoc cref="ErrorCode.GAME_MONETIZATION_NOT_ENABLED" />
         GAME_MONETIZATION_NOT_ENABLED = ErrorCode.GAME_MONETIZATION_NOT_ENABLED,
+        /// <inheritdoc cref="ErrorCode.GAME_MONETIZATION_NOT_ENABLED" />
+        GAME_MONETIZATION_NOT_CONFIGURED = ErrorCode.GAME_MONETIZATION_NOT_CONFIGURED,
         /// <inheritdoc cref="ErrorCode.PAYMENT_FAILED" />
         PAYMENT_FAILED = ErrorCode.PAYMENT_FAILED,
         /// <inheritdoc cref="ErrorCode.INCORRECT_DISPLAY_PRICE" />

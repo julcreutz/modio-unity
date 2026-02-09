@@ -23,7 +23,7 @@ namespace Modio.Caching
             }
         }
         
-        static readonly Dictionary<ModId, Mod> Mods = new Dictionary<ModId, Mod>();
+        static readonly Dictionary<ModioId, Mod> Mods = new Dictionary<ModioId, Mod>();
         static readonly Dictionary<string, ModQueryCachedResponse> ModSearches = new Dictionary<string, ModQueryCachedResponse>();
 
         internal static int SearchesNotInCache; 
@@ -31,7 +31,7 @@ namespace Modio.Caching
         static readonly StringBuilder StringBuilder = new StringBuilder();
 
         /// <summary>Avoid using this if at all possible. Use <see cref="TryGetMod"/> if possible.</summary>
-        internal static Mod GetMod(ModId modId) =>
+        internal static Mod GetMod(ModioId modId) =>
             Mods.TryGetValue(modId, out Mod mod)
                 ? mod
                 : Mods[modId] = new Mod(modId);
@@ -44,7 +44,7 @@ namespace Modio.Caching
                 ? mod.ApplyDetailsFromModObject(modObject)
                 : Mods[modObject.Id] = new Mod(modObject);
 
-        internal static bool TryGetMod(ModId modId, out Mod mod) =>
+        internal static bool TryGetMod(ModioId modId, out Mod mod) =>
             Mods.TryGetValue(modId, out mod);
 
         static ModCache() => ModioClient.OnShutdown += Clear;
@@ -95,7 +95,7 @@ namespace Modio.Caching
             SearchesSavedByCache = 0;
         }
         
-        internal static void ClearMod(ModId modId)
+        internal static void ClearMod(ModioId modId)
         {
             ClearModSearchCache();
             Mods.Remove(modId);
@@ -131,6 +131,25 @@ namespace Modio.Caching
             var filterKey = StringBuilder.ToString();
             StringBuilder.Clear();
             return filterKey;
+        }
+
+        public static void ClearStartingWith(string startsWith)
+        {
+            List<string> matches = null;
+            
+            foreach (string key in ModSearches.Keys)
+            {
+                if(!key.StartsWith(startsWith))
+                    continue;
+                matches ??= new List<string>();
+                matches.Add(key);
+            }
+
+            if (matches == null)
+                return;
+
+            foreach (string m in matches)
+                ModSearches.Remove(m);
         }
     }
 }

@@ -36,9 +36,14 @@ namespace Modio.API.SchemaDefinitions{
         {
             _bodyParameters.Clear();
 
-            _bodyParameters.Add("images", Images);
-            _bodyParameters.Add("youtube", Youtube);
-            _bodyParameters.Add("sketchfab", Sketchfab);
+            if (Images != null)
+                _bodyParameters.Add("images", Images);
+
+            if (Youtube != null)
+                _bodyParameters.Add("youtube", Youtube);
+
+            if (Sketchfab != null)
+                _bodyParameters.Add("sketchfab", Sketchfab);
 
             return _bodyParameters;
         }

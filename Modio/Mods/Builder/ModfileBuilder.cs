@@ -16,8 +16,9 @@ namespace Modio.Mods.Builder
         public string ChangeLog { get; private set; } = null;
         public string MetadataBlob { get; private set; } = null;
         public Platform[] Platforms { get; private set; } = null;
+        public bool IsSource { get; private set; } = false;
 
-        ModId ParentId => _parentModBuilder.EditTarget.Id;
+        ModioId ParentId => _parentModBuilder.EditTarget.Id;
         readonly ModBuilder _parentModBuilder;
         
         internal ModfileBuilder(ModBuilder parent) => _parentModBuilder = parent;
@@ -72,13 +73,31 @@ namespace Modio.Mods.Builder
             return this;
         }
 
+        /// <summary>
+        /// This will configure the ModfileBuilder to upload the modfile to mod.io's Cloud Cooking solution. Files should
+        /// be loose in a directory, with files that need to be cooked living in a 'Bundle' directory.
+        /// </summary>
+        /// <remarks>Requires Cloud Cooking to be enabled for the game. Publishing will return an error if Cloud
+        /// Cooking is not enabled for the game.</remarks>
+        public ModfileBuilder SetSourceFile(bool isSourceFile)
+        {
+            IsSource = isSourceFile;
+            return this;
+        }
+
         public ModBuilder FinishModfile() => _parentModBuilder;
         
         internal async Task<Error> PublishModfile()
         {
             if (_parentModBuilder.EditTarget is null)
             {
-                ModioLog.Error?.Log($"Unable to publish modfile, no {typeof(ModId)} found to upload to. How did you get here?");
+                ModioLog.Error?.Log($"Unable to publish modfile, no {typeof(ModioId)} found to upload to. How did you get here?");
+                return new Error(ErrorCode.BAD_PARAMETER);
+            }
+
+            if (string.IsNullOrEmpty(FilePath))
+            {
+                ModioLog.Error?.Log($"No path to modfile provided, cannot upload mod.");
                 return new Error(ErrorCode.BAD_PARAMETER);
             }
 
@@ -113,7 +132,7 @@ namespace Modio.Mods.Builder
                         null
                     );
 
-                    var uploadTask = ModioAPI.Files.AddModfile(ParentId, addModfileRequest);
+                    var uploadTask = GetAddModfileTask(addModfileRequest);
 
                     (error, _) = await uploadTask;
                 }
@@ -156,8 +175,7 @@ namespace Modio.Mods.Builder
             
             string[] platformStrings = Platforms.Select(GetPlatformHeader).ToArray();
 
-            (Error error, ModfileObject? modfileObject) upload = await ModioAPI.Files.AddModfile(
-                ParentId,
+            (Error error, ModfileObject? modfileObject) upload = await GetAddModfileTask(
                 new AddModfileRequest(ModioAPIFileParameter.None, Version, ChangeLog, MetadataBlob, platformStrings, uploadId)
             );
 
@@ -254,13 +272,20 @@ namespace Modio.Mods.Builder
 
             if (end.error) return (end.error, null);
 
-            (Error error, ModfileObject? modfileObject) upload = await ModioAPI.Files.AddModfile(
-                ParentId,
+            (Error error, ModfileObject? modfileObject) upload = await GetAddModfileTask(
                 new AddModfileRequest(ModioAPIFileParameter.None, version, changelog, metadataBlob, platforms, uploadId)
             );
 
             return (Error.None, upload.modfileObject);
         }
+
+        /// <summary>
+        /// Will return <see cref="ModioAPI.Files.AddSourceModfile"/> if <see cref="IsSource"/> is true, otherwise it'll
+        /// <see cref="ModioAPI.Files.AddModfile"/>.
+        /// </summary>
+        Task<(Error error, ModfileObject? modfileObject)> GetAddModfileTask(AddModfileRequest body) => IsSource
+            ? ModioAPI.Files.AddSourceModfile(ParentId, body)
+            : ModioAPI.Files.AddModfile(ParentId, body);
 
         public enum Platform
         {

@@ -51,6 +51,8 @@ namespace Modio.API.SchemaDefinitions{
         internal readonly string Summary;
         /// <summary>The description of the collection.</summary>
         internal readonly string Description;
+        /// <summary>`description` field converted into plaintext.</summary>
+        internal readonly string DescriptionPlaintext;
 
         /// <param name="id">The collection id.</param>
         /// <param name="gameId">The game id.</param>
@@ -95,7 +97,8 @@ namespace Modio.API.SchemaDefinitions{
             string name,
             string name_id,
             string summary,
-            string description
+            string description,
+            string description_plaintext
         ) {
             Id = id;
             GameId = game_id;
@@ -118,6 +121,7 @@ namespace Modio.API.SchemaDefinitions{
             NameId = name_id;
             Summary = summary;
             Description = description;
+            DescriptionPlaintext = description_plaintext;
         }
     }
 }

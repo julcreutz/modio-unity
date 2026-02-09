@@ -5,10 +5,11 @@ using UnityEngine;
 namespace Modio.Unity.UI.Components.ModProperties
 {
     [Serializable]
-    public class ModPropertyCreator : IModProperty
+    public class ModPropertyCreator : ModioResourceProperty
     {
         [SerializeField] ModioUIUser _user;
 
-        public void OnModUpdate(Mod mod) => _user.SetUser(mod.Creator);
+        protected override void OnResourceUpdate(IModioInfo resource) 
+            => _user.SetUser(resource.Creator);
     }
 }

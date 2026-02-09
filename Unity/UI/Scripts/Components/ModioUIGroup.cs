@@ -9,23 +9,25 @@ using UnityEngine.UI;
 
 namespace Modio.Unity.UI.Components
 {
-    public class ModioUIGroup : MonoBehaviour
+    public class ModioUIGroup<TResource, TModioUIContainer> : MonoBehaviour 
+        where TModioUIContainer : MonoBehaviour, IModioUIPropertiesOwner, IModioUIResourceContainer<TResource>
+        where TResource : IModioInfo
     {
-        static readonly Dictionary<Mod, ModioUIMod> TempActive = new Dictionary<Mod, ModioUIMod>();
+        static readonly Dictionary<TResource, TModioUIContainer> TempActive = new Dictionary<TResource, TModioUIContainer>();
 
-        ModioUIMod _template;
+        TModioUIContainer _template;
 
-        readonly List<ModioUIMod> _active = new List<ModioUIMod>();
-        readonly List<ModioUIMod> _inactive = new List<ModioUIMod>();
+        readonly List<TModioUIContainer> _active = new List<TModioUIContainer>();
+        readonly List<TModioUIContainer> _inactive = new List<TModioUIContainer>();
 
-        (IReadOnlyList<Mod> mods, int selectionIndex) _displayOnEnable;
+        (IReadOnlyList<TResource> mods, int selectionIndex) _displayOnEnable;
 
         [SerializeField, Tooltip("(Optional) The root layout to rebuild before performing selections")]
         RectTransform _layoutRebuilder;
 
         void Awake()
         {
-            _template = GetComponentInChildren<ModioUIMod>();
+            _template = GetComponentInChildren<TModioUIContainer>();
 
             if (_template != null)
             {
@@ -35,7 +37,7 @@ namespace Modio.Unity.UI.Components
             else
             {
                 Debug.LogWarning(
-                    $"{nameof(ModioUIGroup)} {gameObject.name} could not find a child {nameof(ModioUIMod)} template, disabling.",
+                    $"{nameof(ModioUIGroup<TResource, TModioUIContainer>)} {gameObject.name} could not find a child {nameof(TModioUIContainer)} template, disabling.",
                     this
                 );
 
@@ -52,7 +54,7 @@ namespace Modio.Unity.UI.Components
             }
         }
 
-        public void SetMods(IReadOnlyList<Mod> mods, int selectionIndex = 0)
+        public void SetMods(IReadOnlyList<TResource> mods, int selectionIndex = 0)
         {
             if (!enabled)
             {
@@ -62,18 +64,18 @@ namespace Modio.Unity.UI.Components
             }
 
             //Treat a null mod list as an empty mod list
-            mods ??= Array.Empty<Mod>();
+            mods ??= Array.Empty<TResource>();
 
             TempActive.Clear();
 
-            foreach (ModioUIMod uiMod in _active)
+            foreach (TModioUIContainer uiMod in _active)
             {
-                if (mods.Contains(uiMod.Mod) && !TempActive.ContainsKey(uiMod.Mod))
-                    TempActive.Add(uiMod.Mod, uiMod);
+                if (mods.Contains(uiMod.Resource) && !TempActive.ContainsKey(uiMod.Resource))
+                    TempActive.Add(uiMod.Resource, uiMod);
                 else
                 {
                     uiMod.gameObject.SetActive(false);
-                    uiMod.SetMod(null);
+                    uiMod.SetResource(default(TResource));
 
                     _inactive.Add(uiMod);
                 }
@@ -83,7 +85,7 @@ namespace Modio.Unity.UI.Components
 
             for (var i = 0; i < mods.Count; i++)
             {
-                bool active = TempActive.Remove(mods[i], out ModioUIMod uiMod);
+                bool active = TempActive.Remove(mods[i], out TModioUIContainer uiMod);
 
                 if (!active)
                 {
@@ -97,10 +99,10 @@ namespace Modio.Unity.UI.Components
                     else
                     {
                         uiMod = Instantiate(_template.gameObject, _template.transform.parent)
-                            .GetComponent<ModioUIMod>();
+                            .GetComponent<TModioUIContainer>();
                     }
 
-                    uiMod.SetMod(mods[i]);
+                    uiMod.SetResource(mods[i]);
                 }
 
                 uiMod.transform.SetSiblingIndex(i);

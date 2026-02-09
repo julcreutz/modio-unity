@@ -110,6 +110,14 @@ MonoBehaviour:
     _extends: 100
     _styleOptions:
     - rid: 7330996548925653004
+  - _target: 305
+    _extends: 1
+    _styleOptions:
+    - rid: 7023046983627046920
+    - rid: 7023046983627046921
+  - _target: 304
+    _extends: 1
+    _styleOptions: []
   references:
     version: 2
     RefIds:
@@ -186,21 +194,33 @@ MonoBehaviour:
       data:
         _option: 9
         _image: {fileID: 21300000, guid: f6bc37c330930a94c963fb2ea416f0db, type: 3}
+    - rid: 7023046983627046920
+      type: {class: SimpleColorOption, ns: Modio.Unity.UI.Scripts.Themes.Options,
+        asm: Modio.Unity.UI}
+      data:
+        _color: {r: 0.9960785, g: 0.77647066, b: 0.46274513, a: 1}
+        _option: 0
+    - rid: 7023046983627046921
+      type: {class: SimpleColorOption, ns: Modio.Unity.UI.Scripts.Themes.Options,
+        asm: Modio.Unity.UI}
+      data:
+        _color: {r: 0.10588236, g: 0.17254902, b: 0.1764706, a: 1}
+        _option: 6
     - rid: 7330996142239645696
       type: {class: TmpFontOption, ns: Modio.Unity.UI.Scripts.Themes.Options, asm: Modio.Unity.UI}
       data:
         _option: 12
-        _fontAsset: {fileID: 11400000, guid: d20bc1cd4016cfa4aa3977b9b1238927, type: 2}
+        _fontAsset: {fileID: 11400000, guid: b2341323cf9ca5e469cb9b98feb1657a, type: 2}
     - rid: 7330996142239645697
       type: {class: TmpFontOption, ns: Modio.Unity.UI.Scripts.Themes.Options, asm: Modio.Unity.UI}
       data:
         _option: 11
-        _fontAsset: {fileID: 11400000, guid: d20bc1cd4016cfa4aa3977b9b1238927, type: 2}
+        _fontAsset: {fileID: 11400000, guid: b2341323cf9ca5e469cb9b98feb1657a, type: 2}
     - rid: 7330996142239645698
       type: {class: TmpFontOption, ns: Modio.Unity.UI.Scripts.Themes.Options, asm: Modio.Unity.UI}
       data:
         _option: 10
-        _fontAsset: {fileID: 11400000, guid: f83e71bf66ab3314e83ef3824acbfe2b, type: 2}
+        _fontAsset: {fileID: 11400000, guid: b2341323cf9ca5e469cb9b98feb1657a, type: 2}
     - rid: 7330996142239645699
       type: {class: ColorSchemeOption, ns: Modio.Unity.UI.Scripts.Themes.Options,
         asm: Modio.Unity.UI}
@@ -457,7 +477,7 @@ MonoBehaviour:
       type: {class: TmpFontOption, ns: Modio.Unity.UI.Scripts.Themes.Options, asm: Modio.Unity.UI}
       data:
         _option: 12
-        _fontAsset: {fileID: 11400000, guid: 23cc4dc974b15bc43be9ad1e680a2624, type: 2}
+        _fontAsset: {fileID: 11400000, guid: a6487a22895c8aa4ab27e972c4bea7e4, type: 2}
     - rid: 7330996250945781780
       type: {class: ColorSchemeOption, ns: Modio.Unity.UI.Scripts.Themes.Options,
         asm: Modio.Unity.UI}

@@ -19,6 +19,13 @@ namespace Modio.Unity.UI.Components.SearchProperties
             bool searchConditionsMet = (_hideOnCustomSearch && search.HasCustomSearch()) ||
                                        _hideForSearchTypes.Contains(search.LastSearchPreset);
 
+            if (search.LastSearchPreset == SpecialSearchType.SearchCollections)
+            {
+                if(_hideForSearchTypes.Contains(SpecialSearchType.SearchForTag)
+                   && search.LastSearchFilter.TagAndCategoryCount > 0)
+                    searchConditionsMet = true;
+            }
+            
             foreach (GameObject gameObject in _gameObjectsToHide)
             {
                 gameObject.SetActive(!searchConditionsMet);

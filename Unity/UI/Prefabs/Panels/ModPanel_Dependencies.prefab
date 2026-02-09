@@ -2018,6 +2018,7 @@ MonoBehaviour:
         asm: Modio.Unity.UI}
       data:
         _modGroup: {fileID: 1964112516557612726}
+        _collectionGroup: {fileID: 0}
         _displayWhenNoResults: {fileID: 0}
         _displayWhenOffline: {fileID: 0}
         _errorHandler:
@@ -2502,7 +2503,7 @@ PrefabInstance:
     - target: {fileID: 4018048731362548279, guid: 6dd03184baab49743b590624104de49b,
         type: 3}
       propertyPath: m_Value
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4018048731362548279, guid: 6dd03184baab49743b590624104de49b,
         type: 3}
@@ -2870,48 +2871,8 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7436158700888325763, guid: d7696d191648c944e9576a21771e12f4,
         type: 3}
-      propertyPath: _properties.Array.size
-      value: 4
-      objectReference: {fileID: 0}
-    - target: {fileID: 7436158700888325763, guid: d7696d191648c944e9576a21771e12f4,
-        type: 3}
-      propertyPath: _properties.Array.data[4]
-      value: Modio.Unity.UI Modio.Unity.UI.Components.ModProperties.ModPropertySubscriptionToggle
-      objectReference: {fileID: 0}
-    - target: {fileID: 7436158700888325763, guid: d7696d191648c944e9576a21771e12f4,
-        type: 3}
-      propertyPath: _properties.Array.data[4]._text
+      propertyPath: managedReferences[-2]
       value: 
-      objectReference: {fileID: 0}
-    - target: {fileID: 7436158700888325763, guid: d7696d191648c944e9576a21771e12f4,
-        type: 3}
-      propertyPath: _properties.Array.data[4]._purchaseButton
-      value: 
-      objectReference: {fileID: 0}
-    - target: {fileID: 7436158700888325763, guid: d7696d191648c944e9576a21771e12f4,
-        type: 3}
-      propertyPath: _properties.Array.data[4]._subscribeButton
-      value: 
-      objectReference: {fileID: 6961490276626685613}
-    - target: {fileID: 7436158700888325763, guid: d7696d191648c944e9576a21771e12f4,
-        type: 3}
-      propertyPath: _properties.Array.data[4]._subscribeToggle
-      value: 
-      objectReference: {fileID: 0}
-    - target: {fileID: 7436158700888325763, guid: d7696d191648c944e9576a21771e12f4,
-        type: 3}
-      propertyPath: _properties.Array.data[4]._unsubscribeButton
-      value: 
-      objectReference: {fileID: 0}
-    - target: {fileID: 7436158700888325763, guid: d7696d191648c944e9576a21771e12f4,
-        type: 3}
-      propertyPath: _properties.Array.data[4]._ignoreDependencies
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 7436158700888325763, guid: d7696d191648c944e9576a21771e12f4,
-        type: 3}
-      propertyPath: _properties.Array.data[4]._dependenciesAreConfirmed
-      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7602448167726505768, guid: d7696d191648c944e9576a21771e12f4,
         type: 3}

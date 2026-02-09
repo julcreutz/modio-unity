@@ -8,6 +8,8 @@ namespace Modio.Unity.UI.Components
 {
     public class ModioUISearchCategoryTab : MonoBehaviour
     {
+        public bool IsSelected => _toggle?.isOn ?? false;
+        
         [SerializeField] ModioUISearchSettings _search;
         [SerializeField] TMP_Text _label;
         [SerializeField] ModioUILocalizedText _labelLocalised;

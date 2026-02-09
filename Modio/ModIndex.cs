@@ -165,7 +165,7 @@ namespace Modio
             return indexEntry;
         }
 
-        internal bool TryGetEntry(ModId modId, out IndexEntry entry) => Index.TryGetValue(modId, out entry);
+        internal bool TryGetEntry(ModioId modId, out IndexEntry entry) => Index.TryGetValue(modId, out entry);
 
         internal void RemoveEntry(Mod mod)
         {

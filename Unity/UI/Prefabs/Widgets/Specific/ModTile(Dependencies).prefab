@@ -517,8 +517,7 @@ MonoBehaviour:
   _properties:
   - rid: 0
   - rid: 1
-  - rid: 2
-  - rid: 3
+  - rid: 7023047032140988416
   references:
     version: 2
     RefIds:
@@ -534,18 +533,12 @@ MonoBehaviour:
         _text: {fileID: 8611355507606203534}
         _format: 2
         _customFormat: 
-    - rid: 2
-      type: {class: ModPropertySubscribed, ns: Modio.Unity.UI.Components.ModProperties,
+    - rid: 7023047032140988416
+      type: {class: ModPropertyInstalled, ns: Modio.Unity.UI.Components.ModProperties,
         asm: Modio.Unity.UI}
       data:
-        _notSubscribedActive: {fileID: 5859706139768981893}
-        _subscribedActive: {fileID: 0}
-    - rid: 3
-      type: {class: ModPropertySubscribed, ns: Modio.Unity.UI.Components.ModProperties,
-        asm: Modio.Unity.UI}
-      data:
-        _notSubscribedActive: {fileID: 0}
-        _subscribedActive: {fileID: 2308083953872460856}
+        _notInstalledActive: {fileID: 5859706139768981893}
+        _installedActive: {fileID: 5937019203230414933}
 --- !u!1 &2308083953872460856
 GameObject:
   m_ObjectHideFlags: 0

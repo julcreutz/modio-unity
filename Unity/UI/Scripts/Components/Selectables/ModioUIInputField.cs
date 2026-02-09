@@ -1,4 +1,6 @@
-﻿using Modio.Platforms;
+﻿using System;
+using System.Collections;
+using Modio.Platforms;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -22,19 +24,31 @@ namespace Modio.Unity.UI.Components.Selectables
             base.OnSelect(eventData);
 
             if (!ModioServices.TryResolve(out IVirtualKeyboardHandler keyboardHandler)) return;
-            
+
             var virtualKeyboardType = ModioVirtualKeyboardType.Default;
-            if (contentType == ContentType.EmailAddress)
-                virtualKeyboardType = ModioVirtualKeyboardType.EmailAddress;
-                
-            keyboardHandler.OpenVirtualKeyboard(null, null, text, virtualKeyboardType, characterLimit, multiLine, s =>
+            if (contentType == ContentType.EmailAddress) virtualKeyboardType = ModioVirtualKeyboardType.EmailAddress;
+    
+            keyboardHandler.OpenVirtualKeyboard(
+                null,
+                null,
+                text,
+                virtualKeyboardType,
+                characterLimit,
+                multiLine,
+                s =>
+                {
+                    text = s;
+                    OnSubmit(null);
+                    StartCoroutine(DelayDeselect());
+                }
+            );
+
+            IEnumerator DelayDeselect()
             {
-                text = s;
-
-                OnSubmit(null);
+                // Wait until a few frames have passed to avoid immediate re-selection
+                for (var i = 0; i < 5; i++) yield return null;
                 OnDeselect(null);
-            });
-
+            }
         }
 
         protected override void DoStateTransition(SelectionState state, bool instant)

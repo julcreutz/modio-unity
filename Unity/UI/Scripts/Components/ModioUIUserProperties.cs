@@ -11,6 +11,8 @@ namespace Modio.Unity.UI.Components
 
         protected override void UpdateProperties()
         {
+            if (Owner.User is null) return;
+            
             foreach (IUserProperty property in _properties) property.OnUserUpdate(Owner.User);
         }
     }

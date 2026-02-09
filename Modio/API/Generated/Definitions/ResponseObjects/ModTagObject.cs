@@ -7,7 +7,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Modio.API.SchemaDefinitions{
     [JsonObject(MemberSerialization.Fields)]
-    internal readonly partial struct ModTagObject 
+    public readonly partial struct ModTagObject 
     {
         /// <summary>Tag name.</summary>
         internal readonly string Name;

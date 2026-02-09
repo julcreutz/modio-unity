@@ -5,7 +5,9 @@ using Modio.API.HttpClient;
 using Modio.API.Interfaces;
 using Modio.Authentication;
 using Modio.Errors;
+using Modio.Extensions;
 using Modio.FileIO;
+using Modio.Mods;
 using Modio.Users;
 
 namespace Modio
@@ -130,10 +132,9 @@ namespace Modio
                 return error;
             }
             
+            GameData.GetGameData().ForgetTaskSafely();
+            
             await User.InitializeNewUser();
-
-            
-            
             
             error = await ModInstallationManagement.Init();
 

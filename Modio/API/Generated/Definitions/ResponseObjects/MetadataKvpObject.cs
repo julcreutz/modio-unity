@@ -7,7 +7,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Modio.API.SchemaDefinitions{
     [JsonObject(MemberSerialization.Fields)]
-    internal readonly partial struct MetadataKvpObject 
+    public readonly partial struct MetadataKvpObject 
     {
         /// <summary>The key of the key-value pair.</summary>
         internal readonly string Metakey;

@@ -19,7 +19,7 @@ namespace Modio.Unity.UI.Components.SearchProperties
 
             foreach (var go in _displayWhenMoreResults)
             {
-                go.SetActive(!search.IsSearching && search.CanGetMoreMods);
+                go.SetActive(!search.IsSearching && search.CanGetMoreResults);
             }
         }
 

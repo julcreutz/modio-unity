@@ -44,8 +44,9 @@ namespace Modio.Unity.UI.Components
         {
             if (Owner) Owner.RemoveUpdatePropertiesListener(UpdateProperties);
 
-            foreach (IPropertyMonoBehaviourEvents monoBehaviourEvents in _monoBehaviourEvents)
-                monoBehaviourEvents.OnDestroy();
+            if (_monoBehaviourEvents != null)
+                foreach (IPropertyMonoBehaviourEvents monoBehaviourEvents in _monoBehaviourEvents)
+                    monoBehaviourEvents.OnDestroy();
         }
 
         void OnEnable()
@@ -56,8 +57,9 @@ namespace Modio.Unity.UI.Components
 
         void OnDisable()
         {
-            foreach (IPropertyMonoBehaviourEvents monoBehaviourEvents in _monoBehaviourEvents)
-                monoBehaviourEvents.OnDisable();
+            if (_monoBehaviourEvents != null)
+                foreach (IPropertyMonoBehaviourEvents monoBehaviourEvents in _monoBehaviourEvents)
+                    monoBehaviourEvents.OnDisable();
         }
 
         protected abstract void UpdateProperties();

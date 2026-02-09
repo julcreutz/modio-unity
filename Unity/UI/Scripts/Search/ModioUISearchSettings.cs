@@ -16,6 +16,9 @@ namespace Modio.Unity.UI.Search
         Purchased             = 10,
         SearchForTag,
         SearchForUser,
+        
+        SearchCollections     = 100,
+        FollowedCollections   = 101,
     }
 
     public class ModioUISearchSettings : MonoBehaviour

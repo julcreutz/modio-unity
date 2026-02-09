@@ -1,5 +1,5 @@
-﻿using System;
-using UnityEngine;
+﻿using UnityEngine;
+using Modio.API;
 
 namespace Modio.Unity
 {
@@ -11,7 +11,7 @@ namespace Modio.Unity
     {
         void Awake()
         {
-            API.AotTypeEnforcer.Hello();
+            APITypeEnforcer.Hello();
         }
     }
 }

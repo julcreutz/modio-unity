@@ -7,7 +7,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Modio.API.SchemaDefinitions{
     [JsonObject(MemberSerialization.Fields)]
-    internal readonly partial struct ModfilePlatformObject 
+    public readonly partial struct ModfilePlatformObject 
     {
         /// <summary>A [target platform](#targeting-a-platform).</summary>
         internal readonly string Platform;

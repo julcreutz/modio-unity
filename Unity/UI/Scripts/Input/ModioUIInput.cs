@@ -93,6 +93,8 @@ namespace Modio.Unity.UI.Input
             MoreFromThisCreator,
             DeveloperMenu,
             Logout,
+            MoreOptionsCollection,
+            LocalCollections,
         }
 
         public static void PressedAction(ModioAction action)

@@ -52,6 +52,21 @@ namespace Modio.API
             );
             
             /// <summary>
+            /// Constructs a filter built for this request type based on a similar GetModsFilter
+            /// </summary>
+            public static GetModCollectionsFilter FilterGetModCollections(Mods.GetModsFilter modFilter)
+            {
+                var collectionsFilter = new GetModCollectionsFilter(modFilter.PageIndex, modFilter.PageSize);
+
+                foreach (KeyValuePair<string, object> modFilterParameter in modFilter.Parameters)
+                {
+                    collectionsFilter.Parameters[modFilterParameter.Key] = modFilterParameter.Value;
+                }
+                
+                return collectionsFilter;
+            }
+            
+            /// <summary>
             /// Filter for GetMods, see <see cref="Mods.FilterGetMods"/>
             /// to construct this filter <br/>
             /// </summary>
@@ -248,6 +263,12 @@ namespace Modio.API
                 public GetModCollectionsFilter SortByStringType(string key, bool ascending = true)
                 {
                     Parameters[$"_sort"] = $"{(ascending ? "" : "-")}{key}";
+                    return this;
+                }
+                
+                public GetModCollectionsFilter CollectionCategory(string collectionCategory)
+                {
+                    Parameters[$"category"] = collectionCategory;
                     return this;
                 }
             }

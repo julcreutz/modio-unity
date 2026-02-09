@@ -32,9 +32,10 @@ namespace Modio.FileIO
         protected CancellationTokenSource ShutdownTokenSource;
         protected CancellationToken ShutdownToken;
 
-        public virtual Task<Error> Init()
+        public virtual async Task<Error> Init()
         {
-            SetupRootPaths();
+            ModioLog.Verbose?.Log($"Initializing DataStorage");
+            await SetupRootPaths();
 
             OngoingTaskCount = 0;
             ShutdownTokenSource = new CancellationTokenSource();
@@ -45,16 +46,22 @@ namespace Modio.FileIO
 
             MigrateLegacyModInstalls();
             
-            return Task.FromResult(Error.None);
+            ModioLog.Verbose?.Log($"Finished initializing DataStorage");
+            
+            return Error.None;
         }
 
-        protected virtual void SetupRootPaths()
+        protected virtual async Task SetupRootPaths()
         {
+            ModioLog.Verbose?.Log($"Setting up root paths");
+            
             GameId = ModioServices.Resolve<ModioSettings>().GameId;
             Root = 
                 $"{Path.Combine(ModioServices.Resolve<IModioRootPathProvider>().Path, "mod.io", GameId.ToString())}{Path.DirectorySeparatorChar}";
             UserRoot
-                = $"{Path.Combine(ModioServices.Resolve<IModioRootPathProvider>().UserPath, "mod.io", GameId.ToString())}{Path.DirectorySeparatorChar}";
+                = $"{Path.Combine(await ModioServices.Resolve<IModioRootPathProvider>().GetUserPath(), "mod.io", GameId.ToString())}{Path.DirectorySeparatorChar}";
+            
+            ModioLog.Verbose?.Log($"Finished setting up root paths");
         }
 
         public virtual async Task Shutdown()
@@ -114,6 +121,10 @@ namespace Modio.FileIO
             try
             {
                 var output = JsonConvert.DeserializeObject<T>(json);
+                
+                if (output == null)
+                    return (new Error(ErrorCode.READ_ERROR), default(T));
+                
                 return (error, output);
             }
             catch (Exception exception)
@@ -337,7 +348,13 @@ namespace Modio.FileIO
             return error;
         }
 
-        protected virtual Stream CreateFileStream(string filePath, FileMode mode) => new FileStream(filePath,mode, mode == FileMode.Append ? FileAccess.Write : FileAccess.ReadWrite, FileShare.None);
+        protected virtual Stream CreateFileStream(string filePath, FileMode mode)
+            => new FileStream(
+                filePath,
+                mode,
+                FileAccess.ReadWrite,
+                FileShare.None
+            );
 
         /// <summary>
         /// Calculate a MD5 Hash

@@ -31,8 +31,10 @@ namespace Modio.Unity.UI.Scripts.Components
             _text.text = authConfig.Name;
         }
 
-        public void ChooseBoundAuthService() 
-            => ModioPanelManager.GetPanelOfType<ModioAuthenticationPickerPanel>().ChooseAuthMethod(_authService);
+        public void ChooseBoundAuthService()
+        {
+            ModioPanelManager.GetPanelOfType<ModioAuthenticationPickerPanel>().ChooseAuthMethod(_authService);
+        }
 
         bool TryGetConfigFromPortal(ModioAPI.Portal portal, out AuthPortalIcon config)
         {

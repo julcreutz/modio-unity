@@ -72,9 +72,9 @@ namespace Modio.Users
             if(anyChange) OnContentsChanged?.Invoke();
         }
 
-        public bool IsSubscribed(ModId modId) => _subscribed.Any(mod => mod.Id == modId);
-        public bool IsDisabled(ModId modId) => _disabled.Any(mod => mod.Id == modId);
-        public bool IsPurchased(ModId modId) => _purchased.Any(mod => mod.Id == modId);
+        public bool IsSubscribed(ModioId modId) => _subscribed.Any(mod => mod.Id == modId);
+        public bool IsDisabled(ModioId modId) => _disabled.Any(mod => mod.Id == modId);
+        public bool IsPurchased(ModioId modId) => _purchased.Any(mod => mod.Id == modId);
 
         public void Dispose()
         {

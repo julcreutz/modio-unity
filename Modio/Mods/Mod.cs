@@ -5,11 +5,13 @@ using System.Net;
 using System.Threading.Tasks;
 using Modio.API;
 using Modio.API.SchemaDefinitions;
+using Modio.Authentication;
 using Modio.Caching;
 using Modio.Errors;
 using Modio.Extensions;
 using Modio.Images;
 using Modio.Mods.Builder;
+using Modio.Monetization;
 using Modio.Reports;
 using Modio.Users;
 using Plugins.Modio.Modio.Ratings;
@@ -19,7 +21,7 @@ namespace Modio.Mods
     /// <summary>A mod.io mod. This is a mutable class that will be maintained and updated as more data arrives. See
     /// <see cref="OnModUpdated"/> &amp; <see cref="AddChangeListener"/> for listening to these changes and updating
     /// UI elements accordingly.</summary>
-    public class Mod
+    public class Mod : IModioInfo
     {
         /// <summary>Posts an event whenever this mod has been updated.</summary>
         public event Action OnModUpdated;
@@ -54,13 +56,14 @@ namespace Modio.Mods
         public ModBuilder Edit() => new ModBuilder(this);
         
         /*  Mod Properties  */
-        public ModId Id { get; }
+        public ModioId Id { get; }
         public string Name { get; private set; }
         public string Summary => _summaryDecoded ??= WebUtility.HtmlDecode(_summaryHtmlEncoded);
         public string Description { get; private set; }
         public DateTime DateLive { get; private set; }
         public DateTime DateUpdated { get; private set; }
         public ModTag[] Tags { get; private set; }
+        public ModSku PortalSku { get; private set; }
         public string MetadataBlob { get; private set; }
         public Dictionary<string,string> MetadataKvps { get; private set; }
         public ModCommunityOptions CommunityOptions { get; private set; }
@@ -88,6 +91,8 @@ namespace Modio.Mods
 
         internal ModObject LastModObject { get; private set; }
 
+        public string FiatPrice { get; internal set; }
+
         public enum LogoResolution
         {
             X320_Y180,
@@ -103,7 +108,7 @@ namespace Modio.Mods
             Original,
         }
 
-        internal Mod(ModId id) => Id = id;
+        internal Mod(ModioId id) => Id = id;
 
         internal Mod(ModObject modObject)
         {
@@ -111,10 +116,12 @@ namespace Modio.Mods
             ApplyDetailsFromModObject(modObject);
         }
 
-        public static Mod Get(long id) => ModCache.GetMod(new ModId(id));
+        public static Mod Get(long id) => ModCache.GetMod(new ModioId(id));
 
         internal Mod ApplyDetailsFromModObject(ModObject modObject)
         {
+            
+
             Name = WebUtility.HtmlDecode(modObject.Name);
             _summaryHtmlEncoded = modObject.Summary;
             _summaryDecoded = null;
@@ -126,7 +133,7 @@ namespace Modio.Mods
             DateUpdated = modObject.DateUpdated.GetLocalDateTime();
 
             Tags = modObject.Tags?.Select(ModTag.Get).ToArray() ?? Array.Empty<ModTag>();
-
+            
             MetadataBlob = modObject.MetadataBlob;
 
             MetadataKvps ??= new Dictionary<string, string>();
@@ -144,19 +151,30 @@ namespace Modio.Mods
                 File.ApplyDetailsFromModfileObject(modObject.Modfile);
             SupportedPlatforms = modObject.Platforms.Select(platformObject => new ModPlatform(platformObject, Id)).ToArray();
 
+            if (User.Current.TryGetRating(Id, ModioResourceType.Mod, out ModioRating rating))
+                CurrentUserRating = rating;
+
             Stats = new ModStats(modObject.Stats, CurrentUserRating);
             IsMonetized = ((int)modObject.MonetizationOptions & (int)ModMonetizationOption.Enabled) != 0
                           && ((int)modObject.MonetizationOptions & (int)ModMonetizationOption.Live) != 0;
             Price = modObject.Price;
             
-            Logo = new ModioImageSource<LogoResolution>(
-                modObject.Logo.Filename,
-                modObject.Logo.Thumb320X180,
-                modObject.Logo.Thumb640X360,
-                modObject.Logo.Thumb1280X720,
-                modObject.Logo.Original
-            );
+            // If the price is 0, the mod cannot be monetized
+            if(Price == 0) 
+                IsMonetized = false;
+            
+            if (Logo == null || string.IsNullOrEmpty(Logo.FileName)) 
+                Logo = new ModioImageSource<LogoResolution>(
+                    modObject.Logo.Filename,
+                    modObject.Logo.Thumb320X180,
+                    modObject.Logo.Thumb640X360,
+                    modObject.Logo.Thumb1280X720,
+                    modObject.Logo.Original
+                );
 
+            if (modObject.Skus != null && modObject.Skus.Length != 0 && IsMonetized)
+                GetFiatPrice(modObject);
+    
             Gallery = modObject.Media.Images.Select(
                                    imageObject => new ModioImageSource<GalleryResolution>(
                                        imageObject.Filename,
@@ -174,6 +192,24 @@ namespace Modio.Mods
             
             InvokeModUpdated(ModChangeType.Everything);
             return this;
+        }
+
+        void GetFiatPrice(ModObject modObject)
+        {
+
+            ModSkuObject skuObject =
+                modObject.Skus.FirstOrDefault(
+                    sku => string.Equals(
+                        sku.Portal,
+                        ModioAPI.CurrentPortal.GetHeader(),
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                );
+
+            // If Id is 0, no matching SKU was found for this portal
+            PortalSku = skuObject.Id == 0 ? null : new ModSku(skuObject);
+            
+            ModioFiatPrice.TryGetLocalPrice(this);
         }
 
 #region Subscriptions
@@ -194,6 +230,7 @@ namespace Modio.Mods
 
             if (subscribed)
             {
+
                 ModObject? modObject;
 
                 (error, modObject) = await ModioAPI.Subscribe.SubscribeToMod(
@@ -362,7 +399,7 @@ namespace Modio.Mods
 
         /// <summary>Gets a Mod from the mod.io server. Will check the cache if a concrete object has already been
         /// cached. If one has been cached, it will apply the details to the found concrete mod.</summary>
-        public static async Task<(Error error, Mod result)> GetMod(ModId modId)
+        public static async Task<(Error error, Mod result)> GetMod(ModioId modId)
         {
             if (!modId.IsValid()) return (new Error(ErrorCode.BAD_PARAMETER), null);
 
@@ -383,7 +420,7 @@ namespace Modio.Mods
 
         /// <summary>Gets all mods from a collection of IDs. Will intelligently check the cache for any present mods
         /// and only get the mods that're missing from the cache.</summary>
-        /// <param name="neededModIds">A collection of <see cref="ModId"/>s or longs to get.</param>
+        /// <param name="neededModIds">A collection of <see cref="ModioId"/>s or longs to get.</param>
         /// <remarks>This can be considered a method to guarantee that the mods are in the cache by completion
         /// of this task. Use this whenever you don't know if you'll have the mod data ready but need to be certain
         /// it's available.</remarks>
@@ -511,36 +548,82 @@ namespace Modio.Mods
 
         public async Task<Error> Purchase(bool subscribeOnPurchase)
         {
-            var idempotent = $"{Id}";
-
-            (Error error, PayObject? payObject) = await ModioAPI.Monetization.Purchase(
-                Id,
-                new PayRequest(Price, subscribeOnPurchase, idempotent)
-            );
-
-            if (error)
-            {
-                if (!error.IsSilent) ModioLog.Error?.Log($"Error purchasing mod {Id}: {error}");
-                return error;
-            }
+            var filter = new ModioAPI.Me.GetUserPurchasesFilter(0, 1);
+            filter.Id(Id);
+            filter.GameId(ModioClient.Settings.GameId);
+            (Error error, Pagination<ModObject[]>? pages) = await ModioAPI.Me.GetUserPurchases(filter);
             
-            IsPurchased = true;
-            User.Current.ApplyWalletFromPurchase(payObject.Value);
-            
-            if (!subscribeOnPurchase)
+            if (!error && pages.Value.Data.Length > 0)
             {
-                InvokeModUpdated(ModChangeType.IsPurchased);
+                ModioLog.Message?.Log("Mod already purchased according to user purchases endpoint, applying purchase locally.");
+                ModObject modObject = pages.Value.Data[0];
+                ApplyDetailsFromModObject(modObject);
+                UpdateLocalPurchaseStatus(true);
+                if (subscribeOnPurchase) UpdateLocalSubscriptionStatus(true);
                 return Error.None;
             }
 
-            IsSubscribed = true;
+            if(!ModioServices.Resolve<ModioSettings>().TryGetPlatformSettings(out MonetizationSettings settings))
+                return new Error(ErrorCode.GAME_MONETIZATION_NOT_ENABLED);
 
-            ModObject? modObject = payObject.Value.Mod;
-            ApplyDetailsFromModObject(modObject.Value);
+            error = settings.MonetizationType switch
+            {
+                ModioMonetizationType.VirtualCurrency => await PurchaseWithVirtualCurrency(subscribeOnPurchase),
+                ModioMonetizationType.UsdMarketplace  => await PurchaseWithUsdMarketplace(subscribeOnPurchase),
+                _                                     => new Error(ErrorCode.GAME_MONETIZATION_NOT_CONFIGURED),
+            };
+            return error;
 
-            InvokeModUpdated(ModChangeType.IsPurchased | ModChangeType.IsSubscribed);
-            ModInstallationManagement.WakeUp();
+        }
+
+        async Task<Error> PurchaseWithUsdMarketplace(bool subscribeOnPurchase)
+        {
+            if (PortalSku == null)
+                return new Error(ErrorCode.MONETIZATION_ENTITLEMENT_MAPPING_NOT_FOUND);
+            
+            (Error error, PayObject? payObject) = await User.Current.PurchaseModWithUsdMarketplace(this, subscribeOnPurchase);
+
+            if (error)
+            {
+                if (!error.IsSilent)
+                    ModioLog.Error?.Log($"Error purchasing mod {Id}: {error}");
+                return error;
+            }
+
+            ApplyPurchase(subscribeOnPurchase, payObject.Value);
             return Error.None;
+        }
+
+        async Task<Error> PurchaseWithVirtualCurrency(bool subscribeOnPurchase)
+        {
+            (Error error, PayObject? payObject) = await User.Current.PurchaseModWithVirtualCurrency(this, subscribeOnPurchase);
+
+            if (error)
+            {
+                if (!error.IsSilent)
+                    ModioLog.Error?.Log($"Error purchasing mod {Id}: {error}");
+                return error;
+            }
+
+            ApplyPurchase(subscribeOnPurchase, payObject.Value);
+            return Error.None;
+        }
+
+        void ApplyPurchase(bool subscribe, PayObject payObject)
+        {
+            IsPurchased = true;
+            var modChangeType = ModChangeType.IsPurchased;
+
+            if (subscribe)
+            {
+                IsSubscribed = true;
+                modChangeType |= ModChangeType.IsSubscribed;
+            }
+            
+            ModObject? modObject = payObject.Mod;
+            ApplyDetailsFromModObject(modObject.Value);
+            InvokeModUpdated(modChangeType);
+            ModInstallationManagement.WakeUp();
         }
 
         /// <summary>Will enqueue this mod for uninstallation with <see cref="ModInstallationManagement"/>.</summary>

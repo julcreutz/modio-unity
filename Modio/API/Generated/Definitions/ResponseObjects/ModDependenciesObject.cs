@@ -69,6 +69,7 @@ namespace Modio.API.SchemaDefinitions{
         internal readonly ModTagObject[] Tags;
         /// <summary>Numerous aggregate stats for the mod.</summary>
         internal readonly ModStatsObject Stats;
+        internal readonly ModSkuObject[] Skus;
         /// <summary>The depth of the dependency tree for this mod.</summary>
         internal readonly long DependencyDepth;
 
@@ -135,6 +136,7 @@ namespace Modio.API.SchemaDefinitions{
             MetadataKvpObject[] metadata_kvp,
             ModTagObject[] tags,
             ModStatsObject stats,
+            ModSkuObject[] skus,
             long dependency_depth
         ) {
             Id = id;
@@ -168,6 +170,7 @@ namespace Modio.API.SchemaDefinitions{
             Tags = tags;
             Stats = stats;
             DependencyDepth = dependency_depth;
+            Skus = skus;
         }
     }
 }

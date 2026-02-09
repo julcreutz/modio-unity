@@ -26,6 +26,11 @@ namespace Modio.Unity.UI.Panels.Authentication
                 && User.Current.IsAuthenticated) 
                 ClosePanel();
             
+            RefreshButtons();
+        }
+
+        void RefreshButtons()
+        {
             if (!ModioServices.TryResolve(out ModioMultiplatformAuthResolver authResolver))
                 authResolver = new ModioUnityMultiplatformAuthResolver();
             

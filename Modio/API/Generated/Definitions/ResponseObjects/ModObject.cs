@@ -7,7 +7,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Modio.API.SchemaDefinitions{
     [JsonObject(MemberSerialization.Fields)]
-    internal readonly partial struct ModObject 
+    public readonly partial struct ModObject 
     {
         /// <summary>Unique mod id.</summary>
         internal readonly long Id;
@@ -71,6 +71,8 @@ namespace Modio.API.SchemaDefinitions{
         internal readonly ModTagObject[] Tags;
         /// <summary>Numerous aggregate stats for the mod.</summary>
         internal readonly ModStatsObject Stats;
+        /// <summary>SKUs with corresponding platforms that can be used to purchase the mod.</summary>
+        internal readonly ModSkuObject[] Skus;
 
         /// <param name="id">Unique mod id.</param>
         /// <param name="gameId">Unique game id.</param>
@@ -103,6 +105,7 @@ namespace Modio.API.SchemaDefinitions{
         /// <param name="metadataKvp">Contains key-value metadata.</param>
         /// <param name="tags">Contains mod tag data.</param>
         /// <param name="stats">Numerous aggregate stats for the mod.</param>
+        /// <param name="skus">SKUs with corresponding platforms that can be used to purchase the mod.</param>
         [JsonConstructor]
         public ModObject(
             long id,
@@ -135,7 +138,8 @@ namespace Modio.API.SchemaDefinitions{
             ModPlatformsObject[] platforms,
             MetadataKvpObject[] metadata_kvp,
             ModTagObject[] tags,
-            ModStatsObject stats
+            ModStatsObject stats,
+            ModSkuObject[] skus
         ) {
             Id = id;
             GameId = game_id;
@@ -168,6 +172,7 @@ namespace Modio.API.SchemaDefinitions{
             MetadataKvp = metadata_kvp;
             Tags = tags;
             Stats = stats;
+            Skus = skus;
         }
     }
 }

@@ -451,7 +451,7 @@ namespace Modio.Mods.Builder
                     _pendingChanges.HasFlag(ChangeFlags.Description) ? Description : null,
                     logo,
                     _pendingChanges.HasFlag(ChangeFlags.Visibility)
-                        ? Visible ? 0 : 1
+                        ? Visible ? 1 : 0
                         : null,
                     _pendingChanges.HasFlag(ChangeFlags.MaturityOptions) ? (long)MaturityOptions : null,
                     _pendingChanges.HasFlag(ChangeFlags.CommunityOptions) ? (long)CommunityOptions : null,
@@ -498,16 +498,37 @@ namespace Modio.Mods.Builder
             // Sync is inverse positive for appending, true = overwrite, false = append
             bool sync = !_appendingGallery;
 
-            (Error error, ModioAPIFileParameter file) = await GalleryZipFromFilePaths(GalleryFilePaths);
+            Error error;
 
-            if (error)
+            if (GalleryFilePaths.Length > 0)
             {
-                ModioLog.Error?.Log($"Error creating {typeof(ModioAPIFileParameter)} for gallery publish request: {error}");
-                return error;
+                ModioAPIFileParameter file;
+                (error, file) = await GalleryZipFromFilePaths(GalleryFilePaths);
+
+                if (error)
+                {
+                    ModioLog.Error?.Log($"Error creating {typeof(ModioAPIFileParameter)} for gallery publish request: {error}");
+                    return error;
+                }
+                
+                var requestBody = new AddModMediaRequest(file, sync);
+                (error, _) = await ModioAPI.Media.AddModMedia(EditTarget.Id, requestBody);
+            }
+            else
+            {
+                var deleteModMediaRequest = new DeleteModMediaRequest(
+                    images: EditTarget.Gallery.Select(g => g.FileName).ToArray(),
+                    null,
+                    null
+                );
+
+                if (deleteModMediaRequest.Images.Length == 0)
+                    return Error.None;
+
+                (error, _) = await ModioAPI.Media.DeleteModMedia(EditTarget.Id, deleteModMediaRequest);
             }
             
-            var requestBody = new AddModMediaRequest(file, sync);
-            (error, _) = await ModioAPI.Media.AddModMedia(EditTarget.Id, requestBody);
+            
 
             if (error && !error.IsSilent)
                 ModioLog.Error?.Log($"Error publishing Gallery for {EditTarget.Name}: {error}");
@@ -714,7 +735,7 @@ namespace Modio.Mods.Builder
                 var newEntry = new ZipEntry(imageFileName);
                 zipStream.PutNextEntry(newEntry);
                 
-                await using Stream readStream = File.Open(imageFilePath, FileMode.Open);
+                await using Stream readStream = File.Open(imageFilePath, FileMode.Open, FileAccess.Read);
                 await readStream.CopyToAsync(zipStream);
                 
                 zipStream.CloseEntry();

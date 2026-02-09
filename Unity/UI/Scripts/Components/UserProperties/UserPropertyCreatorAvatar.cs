@@ -48,7 +48,7 @@ namespace Modio.Unity.UI.Components.UserProperties
 
         void SetLazyImage()
         {
-            if (_currentUser is null)
+            if (_currentUser?.Avatar is null)
             {
                 // Since a request for an image can (technically, tho shouldn't) outlast the time it takes to get a new
                 // user, we do this check here too
@@ -63,7 +63,7 @@ namespace Modio.Unity.UI.Components.UserProperties
                     if (_image != null) _image.texture = texture2D;
                 }
             );
-
+            
             _lazyImage.SetImage(_currentUser.Avatar, _resolution);
         }
 
