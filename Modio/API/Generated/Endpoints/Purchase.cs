@@ -31,7 +31,7 @@ namespace Modio.API
             /// <summary>Purchase a mod. A Successful request will return the newly created [Pay Object](#pay-object).</summary>
             /// <param name="modId">Mod id</param>
             /// <param name="body"></param>
-            internal static async Task<(Error error, PayObject? payObject)> Purchase(
+            public static async Task<(Error error, PayObject? payObject)> Purchase(
                 long modId,
                 PayRequest? body = null
             ) {

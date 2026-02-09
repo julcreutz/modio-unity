@@ -60,7 +60,12 @@ namespace Modio.Users
         readonly Authentication _authentication;
         bool _isWritingToDisk;
         bool _needsSavingToDisk;
+        List<UserProfile> _followed = new List<UserProfile>();
+        Dictionary<ModioId, ModioRating> _modRatings = new Dictionary<ModioId, ModioRating>();
+        Dictionary<ModioId, ModioRating> _collectionRatings = new Dictionary<ModioId, ModioRating>();
         
+        List<CachedEntitlement> _cachedEntitlements;
+
         public static async Task InitializeNewUser()
         {
             ModioLog.Verbose?.Log($"Initializing New User");
@@ -72,6 +77,12 @@ namespace Modio.Users
             Current.IsUpdating = true;
 
             Current.LocalUserId = await ModioServices.Resolve<IGetActiveUserIdentifier>().GetActiveUserIdentifier();
+
+            if (string.IsNullOrEmpty(Current.LocalUserId))
+            {
+                Current.IsUpdating = false;
+                return;
+            }
             
             (Error error, UserSaveObject userObject) = await ModioClient.DataStorage.ReadUserData(Current.LocalUserId);
 
@@ -89,7 +100,11 @@ namespace Modio.Users
                 Current.IsAuthenticated = true;
                 Current.HasAcceptedTermsOfUse = true;
                 InternalOnUserChanged?.Invoke();
-                await Current.Sync();
+                error = await Current.Sync();
+
+                if (error.Code == ErrorCode.USER_NOT_AUTHENTICATED)
+                    Current.IsAuthenticated = false;
+
                 return;
             }
 
@@ -160,11 +175,30 @@ namespace Modio.Users
 
         public void OnAuthenticated(string oAuthToken, long dateExpires, bool sync = true)
         {
+            ApplyAuthenticationAsync(oAuthToken, sync).ForgetTaskSafely();
+        }
+
+        public async Task ApplyAuthenticationAsync(string oAuthToken, bool sync)
+        {
+            IsUpdating = true;
+            // At this point a local account had definitely been chosen, so we're best off rechecking if a user file
+            // exists on system
+            Current.LocalUserId = await ModioServices.Resolve<IGetActiveUserIdentifier>().GetActiveUserIdentifier();
+
+            if (!string.IsNullOrEmpty(Current.LocalUserId))
+            {
+                (Error error, UserSaveObject userObject) = await ModioClient.DataStorage.ReadUserData(Current.LocalUserId);
+
+                if (!error)
+                    Current.ApplyDetailsFromSaveObject(userObject);
+            }
+            
             _authentication.OAuthToken = oAuthToken;
             HasAcceptedTermsOfUse = true;
             bool hasAuthenticated = IsAuthenticated;
             IsAuthenticated = true;
             AuthenticatedPortal = ModioAPI.CurrentPortal;
+            
             InternalOnUserChanged?.Invoke();
 
             // Using Task.Run() causes this to run in another thread, breaking sync completely as event subscribers
@@ -182,8 +216,7 @@ namespace Modio.Users
             if(sync || !hasAuthenticated)
                 Sync().ForgetTaskSafely();
         }
-        
-        
+
         internal string GetAuthToken() => _authentication.OAuthToken;
         
         /// <summary>
@@ -201,10 +234,19 @@ namespace Modio.Users
             Task<Error> subscriptionTask = SyncSubscriptions();
             Task<Error> purchaseTask = SyncPurchases();
 
-            SyncRatings().ForgetTaskSafely();
+            SyncModRatings().ForgetTaskSafely();
+            SyncCollectionRatings().ForgetTaskSafely();
             SyncWallet().ForgetTaskSafely();
             SyncEntitlements().ForgetTaskSafely();
             SyncCollections().ForgetTaskSafely();
+            SyncUsersFollowing().ForgetTaskSafely();
+            
+            ClearCachedUserCreations();
+
+            if (ModioClient.Settings.TryGetPlatformSettings(out MonetizationSettings settings)
+                && settings.MonetizationType == ModioMonetizationType.UsdMarketplace
+                && ModioServices.TryResolve(out IModioUsdMarketplaceService usdCurrencyProvider))
+                await usdCurrencyProvider.UpdateSkuCache();
 
             Error[] errors = await Task.WhenAll(profileTask, subscriptionTask, purchaseTask);
 
@@ -276,7 +318,7 @@ namespace Modio.Users
 
             var filter = ModioAPI.Me.FilterGetUserSubscriptions().GameId(ModioClient.Settings.GameId);
     
-            (Error error, List<ModObject> subObjects) = await CrawlAllPages(filter, ModioAPI.Me.GetUserSubscriptions);
+            (Error error, List<ModObject> subObjects) = await ModioAPI.CrawlAllPages(filter, ModioAPI.Me.GetUserSubscriptions);
 
             if (error)
             {
@@ -332,7 +374,7 @@ namespace Modio.Users
 
             ModioAPI.Me.GetUserPurchasesFilter filter = ModioAPI.Me.FilterGetUserPurchases().GameId(settings.GameId);
 
-            (Error error, List<ModObject> purchasedObjects) = await CrawlAllPages(filter, ModioAPI.Me.GetUserPurchases);
+            (Error error, List<ModObject> purchasedObjects) = await ModioAPI.CrawlAllPages(filter, ModioAPI.Me.GetUserPurchases);
 
             if (error)
             {
@@ -384,7 +426,7 @@ namespace Modio.Users
             
             ModioAPI.Me.GetUserFollowedCollectionsFilter filter = ModioAPI.Me.FilterGetUserFollowedCollections().GameId(settings.GameId);
 
-            (Error error, List<ModCollectionObject> collections) = await CrawlAllPages(filter, ModioAPI.Me.GetUserFollowedCollections);
+            (Error error, List<ModCollectionObject> collections) = await ModioAPI.CrawlAllPages(filter, ModioAPI.Me.GetUserFollowedCollections);
 
             if (error)
             {
@@ -429,16 +471,30 @@ namespace Modio.Users
 
             var settings = ModioServices.Resolve<ModioSettings>();
 
-            if (!settings.TryGetPlatformSettings(out MonetizationSettings _))
+            if (!settings.TryGetPlatformSettings(out MonetizationSettings monetizationSettings))
             {
                 ModioLog.Message?.Log($"No {typeof(MonetizationSettings)} settings found, skipping SyncEntitlements");
                 return Error.None;
+            }
+
+            Error error;
+            if (monetizationSettings.MonetizationType == ModioMonetizationType.UsdMarketplace)
+            {
+                ModioLog.Message?.Log($"USD Marketplace monetization does not sync entitlements, caching platform entitlements");
+                (error, _)  = await UpdateEntitlementCache();
+
+                if (error && !error.IsSilent) ModioLog.Error?.Log($"Error Updating Entitlements Cache for {UserId}: {error}");
+                
+                error  = await ModioFiatPrice.FetchSkuCache(ModioAPI.CurrentPortal);
+                
+                if (error && !error.IsSilent) ModioLog.Error?.Log($"Error Fetching SKU Cache for {UserId}: {error}");
+                
             }
             
             if (!ModioServices.TryResolve(out IModioEntitlementService entitlementPlatform)) 
                 return Error.None;
 
-            Error error = await entitlementPlatform.SyncEntitlements();
+            error = await entitlementPlatform.SyncEntitlements();
 
             if (error)
             {
@@ -498,7 +554,7 @@ namespace Modio.Users
         /// <returns>
         /// An asynchronous task that returns <see cref="Error"/>.<see cref="Error.None"/> on success.
         /// </returns>
-        public async Task<Error> SyncRatings()
+        public async Task<Error> SyncModRatings()
         {
             ModioLog.Verbose?.Log($"Syncing Ratings {UserId}");
 
@@ -506,8 +562,9 @@ namespace Modio.Users
 
             var filter = ModioAPI.Me.FilterGetUserRatings();
             filter.GameId(settings.GameId);
+            filter.ResourceType(ModioResourceType.Mod);
 
-            (Error error, List<RatingObject> ratedMods) = await CrawlAllPages(filter, ModioAPI.Me.GetUserRatings);
+            (Error error, List<RatingObject> ratedMods) = await ModioAPI.CrawlAllPages(filter, ModioAPI.Me.GetUserRatings);
 
             if (error)
             {
@@ -517,12 +574,53 @@ namespace Modio.Users
             
             foreach (RatingObject ratingObject in ratedMods)
             {
+                _modRatings[ratingObject.ModId] = (ModioRating)ratingObject.Rating;
+                
                 if (!ModCache.TryGetMod(ratingObject.ModId, out Mod mod))
                     continue;
-                
+
                 mod.SetCurrentUserRating((ModioRating)ratingObject.Rating);
             }
             
+            ModioLog.Verbose?.Log($"Finished Syncing Ratings for {LocalUserId} with result: {error}");
+
+            return Error.None;
+        }
+        
+        /// <summary>
+        /// Syncs the user ratings with changes made on the WebInterface
+        /// </summary>
+        /// <returns>
+        /// An asynchronous task that returns <see cref="Error"/>.<see cref="Error.None"/> on success.
+        /// </returns>
+        public async Task<Error> SyncCollectionRatings()
+        {
+            ModioLog.Verbose?.Log($"Syncing Ratings {UserId}");
+
+            var settings = ModioServices.Resolve<ModioSettings>();
+
+            var filter = ModioAPI.Me.FilterGetUserRatings();
+            filter.GameId(settings.GameId);
+            filter.ResourceType(ModioResourceType.Collection);
+
+            (Error error, List<RatingObject> ratedMods) = await ModioAPI.CrawlAllPages(filter, ModioAPI.Me.GetUserRatings);
+
+            if (error)
+            {
+                if (!error.IsSilent) ModioLog.Error?.Log($"Error syncing Ratings for {UserId}: {error}");
+                return error;
+            }
+            
+            foreach (RatingObject ratingObject in ratedMods)
+            {
+                _collectionRatings[ratingObject.ModId] = (ModioRating)ratingObject.Rating;
+                
+                if (!ModCollectionCache.TryGetCachedStatic(ratingObject.ModId, out ModCollection collection))
+                    continue;
+
+                collection.SetCurrentUserRating((ModioRating)ratingObject.Rating);
+            }
+
             ModioLog.Verbose?.Log($"Finished Syncing Ratings for {LocalUserId} with result: {error}");
 
             return Error.None;
@@ -635,15 +733,20 @@ namespace Modio.Users
             return (Error.None, page);
         }
 
+        void ClearCachedUserCreations()
+        {
+            ModCache.ClearStartingWith("me:yes,");
+        }
+
         /// <summary>
         /// Gets all users following the currently authenticated User from the API.
         /// </summary>
         /// <returns>An asynchronous task that returns a tuple (<see cref="Error"/> error, <see cref="IReadOnlyList{UserProfile}"/> results), where:</returns>
-        public async Task<(Error error, IReadOnlyList<UserProfile> results)> GetUsersFollowers()
+        public async Task<(Error error, IReadOnlyList<UserProfile> results)> SyncUsersFollowers()
         {
             ModioAPI.Me.GetUserFollowersFilter filter = ModioAPI.Me.FilterGetUserFollowers();
             
-            (Error error, List<UserObject> userObjects) = await CrawlAllPages(filter, ModioAPI.Me.GetUserFollowers);
+            (Error error, List<UserObject> userObjects) = await ModioAPI.CrawlAllPages(filter, ModioAPI.Me.GetUserFollowers);
             if (error)
             {
                 if (!error.IsSilent) 
@@ -660,11 +763,13 @@ namespace Modio.Users
         /// Gets all users that the currently authenticated User is following from the API.
         /// </summary>
         /// <returns>An asynchronous task that returns a tuple (<see cref="Error"/> error, <see cref="IReadOnlyList{UserProfile}"/> results), where:</returns>
-        public async Task<(Error error, IReadOnlyList<UserProfile> results)> GetUsersFollowing()
+        public async Task<(Error error, IReadOnlyList<UserProfile> results)> SyncUsersFollowing()
         {
+            var followedPreviously = new List<UserProfile>(_followed);
+            
             ModioAPI.Me.GetUsersFollowingFilter filter = ModioAPI.Me.FilterGetUsersFollowing();
             
-            (Error error, List<UserObject> userObjects) = await CrawlAllPages(filter, ModioAPI.Me.GetUsersFollowing);
+            (Error error, List<UserObject> userObjects) = await ModioAPI.CrawlAllPages(filter, ModioAPI.Me.GetUsersFollowing);
             if (error)
             {
                 if (!error.IsSilent) 
@@ -674,9 +779,57 @@ namespace Modio.Users
 
             List<UserProfile> output = userObjects.Select(UserProfile.Get).ToList();
 
+            // Remove all confirmed still followed, then set remainder as unfollowed
+            followedPreviously.RemoveAll(output.Contains);
+            foreach (UserProfile user in followedPreviously)
+                user.SetFollowed(false);
+
+            // This way we capture changes via web interface
+            foreach (UserProfile user in output)
+                user.SetFollowed(true);
+
+            _followed = output;
+
             return (Error.None, output);
         }
-        
+
+        public async Task<Error> FollowUser(UserProfile user)
+        {
+            var request = new FollowUserRequest(user.UserId);
+            (Error error, Response204? _) = await ModioAPI.Followers.FollowUser(UserId, request);
+
+            if (error)
+                return error;
+
+            if (!_followed.Contains(user))
+                _followed.Add(user);
+            
+            user.SetFollowed(true);
+
+            return error;
+        }
+
+        public async Task<Error> UnfollowUser(UserProfile user)
+        {
+            (Error error, Response204? _) = await ModioAPI.Followers.UnfollowUser(UserId, user.UserId);
+            
+            if (error)
+                return error;
+
+            _followed.Remove(user);
+            user.SetFollowed(false);
+
+            return error;
+        }
+
+        public bool TryGetRating(ModioId id, ModioResourceType resourceType, out ModioRating rating)
+            => resourceType switch
+            {
+                ModioResourceType.Mod => _modRatings.TryGetValue(id, out rating),
+                ModioResourceType.Collection => _collectionRatings.TryGetValue(id, out rating),
+                _ => throw new ArgumentOutOfRangeException(nameof(resourceType), resourceType, null),
+            };
+
         /// <summary>Removes the <see cref="User"/> and associated authentication and caches from this device.</summary>
         [ModioDebugMenu(ShowInBrowserMenu = false, ShowInSettingsMenu = true)]
         public static void DeleteUserData()
@@ -707,50 +860,6 @@ namespace Modio.Users
             Current._authentication.OAuthToken = "INVALID_TOKEN"; // Invalid token
         }
 
-        /// <summary>
-        /// Crawls all pages
-        /// </summary>
-        /// <param name="filter"></param>
-        /// <param name="method"></param>
-        /// <typeparam name="F">The Filter type to use for this Crawl</typeparam>
-        /// <typeparam name="T">The Type of object expected from the crawl</typeparam>
-        /// <returns>
-        /// <p>An asynchronous task that returns a tuple (<see cref="Error"/> error, <see cref="List{T}"/> results), where:</p>
-        /// <p><c>error</c> is the error encountered during the task (if any)</p>
-        /// <p><c>results</c> is a list of the expected type users.</p>
-        /// </returns>
-        static async Task<(Error error, List<T> results)> CrawlAllPages<F, T>(
-            F filter, 
-            Func<F, Task<(Error error, Pagination<T[]>?)>> method
-        ) 
-            where F : SearchFilter<F>
-        {
-            var output = new List<T>();
-            
-            while (true)
-            {
-                (Error error, Pagination<T[]>? result) 
-                    = await method(filter);
-
-                if (error)
-                {
-                    if (!error.IsSilent) 
-                        ModioLog.Warning?.Log($"Error crawling pages for user {Current.UserId}: {error.GetMessage()}");
-                    return (error, new List<T>());
-                }
-
-                output.AddRange(result.Value.Data);
-
-                // Check for if we're on the last page, if not we increment the page number and iterate
-                if (result.Value.ResultOffset + result.Value.ResultCount < result.Value.ResultTotal)
-                    filter.PageIndex++;
-                else
-                    break;
-            }
-
-            return (Error.None, output);
-        }
-        
         async Task SaveUserData()
         {
             if (_isWritingToDisk)
@@ -785,8 +894,135 @@ namespace Modio.Users
                 FollowedCollections = ModCollectionRepository.GetFollowed().Select(collection => (long)collection.Id).ToList(),
                 UserPortal = (int)AuthenticatedPortal,
             };
+
+        /// <summary>
+        /// Cached entitlements the user has
+        /// </summary>
+        /// <returns></returns>
+        List<CachedEntitlement> GetCachedEntitlements() => _cachedEntitlements;
+
+        /// <summary>
+        /// Update the local cached entitlements from the API
+        /// </summary>
+        /// <returns></returns>
+        async Task<(Error, List<CachedEntitlement>)> UpdateEntitlementCache()
+        {
+            if (!ModioServices.TryResolve(out IModioUsdMarketplaceService service))
+            {
+                ModioLog.Error?.Log("Unable to resolve IModioUsdMarketplaceService to update entitlement cache");
+                return (new Error(ErrorCode.UNKNOWN), null);
+            }
+            
+            (Error error, List<BrowseEntitlementObject> entitlements) = await service.GetAllUserEntitlements();
+            
+            if (error)
+                return (error, null);
+
+            _cachedEntitlements = new List<CachedEntitlement>();
+
+            foreach (BrowseEntitlementObject t in entitlements)
+                _cachedEntitlements.Add(new CachedEntitlement(t));
+            
+            return (Error.None, _cachedEntitlements);
+        }
+
+        
+
+        /// <summary>
+        /// Removes the local cached entitlement with the given skuId
+        /// </summary>
+        /// <param name="skuId"></param>
+        void ConsumeCachedEntitlement(string skuId)
+        {
+            CachedEntitlement entitlement = _cachedEntitlements.First(
+                entitlement => string.Equals(entitlement.SkuId, skuId, StringComparison.OrdinalIgnoreCase)
+            );
+
+            _cachedEntitlements.Remove(entitlement);
+        }
+
+        internal async Task<(Error error, PayObject? payObject)> PurchaseModWithUsdMarketplace(
+            Mod mod,
+            bool subscribeOnPurchase
+        )
+        {
+            var service = ModioServices.Resolve<IModioUsdMarketplaceService>();
+
+            
+            if (service == null)
+                return (new Error(ErrorCode.UNKNOWN), null);
+
+
+            Error error = Error.None;
+            
+            //Check cached entitlements
+            //if none, get entitlements from modio
+            List<CachedEntitlement> entitlements = GetCachedEntitlements();
+            
+            if (entitlements == null || entitlements.Count == 0)
+                (error, entitlements) = await UpdateEntitlementCache();
+            
+            if (error)
+                return (error,null);
+
+            if(entitlements == null || (entitlements.Count == 0))
+            {
+                error = await service.OpenPurchaseFlow(mod.PortalSku);
+
+                if (error)
+                    return (error,null);
+
+                (error, _) = await UpdateEntitlementCache();
+                
+                if (error)
+                    return ( error,null);
+            }
+            
+            var idempotent = $"{mod.Id}";
+
+            PayObject? payObject;
+            (error, payObject) = await service.TryPurchase(mod, subscribeOnPurchase, idempotent);
+
+            if (error)
+                return (error, payObject);
+
+            ConsumeCachedEntitlement(mod.PortalSku.Sku);
+            return (Error.None, payObject);
+        }
+
+        internal async Task<(Error error, PayObject? payObject)> PurchaseModWithVirtualCurrency(Mod mod, bool subscribeOnPurchase)
+        {
+            var idempotent = $"{mod.Id}";
+
+            (Error error, PayObject? payObject) = await ModioAPI.Monetization.Purchase(
+                mod.Id,
+                new PayRequest(
+                    mod.Price,
+                    subscribeOnPurchase,
+                    idempotent,
+                    0));
+            
+            if (error)
+                return (error, null);
+
+            ApplyWalletFromPurchase(payObject.Value);
+
+            return (Error.None, payObject);
+        }
     }
-    
+
+    public struct CachedEntitlement
+    {
+        public readonly long EntitlementType;
+        public readonly string SkuId;
+        
+        public CachedEntitlement(BrowseEntitlementObject sourceEntitlement)
+        {
+            EntitlementType = sourceEntitlement.EntitlementType;
+            SkuId = sourceEntitlement.SkuId;
+        }
+    }
+
     [Serializable]
     public class UserSaveObject
     {

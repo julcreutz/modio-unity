@@ -11,8 +11,8 @@ namespace Modio.Errors
 
         public override string GetMessage() => $"{base.GetMessage()}: {Exception}";
         
-        internal ErrorException(Exception exception, ErrorCode code) : base(code) => Exception = exception;
-        internal ErrorException(Exception exception) : base(ErrorCodeFromException(exception)) => Exception = exception;
+        public ErrorException(Exception exception, ErrorCode code) : base(code) => Exception = exception;
+        public ErrorException(Exception exception) : base(ErrorCodeFromException(exception)) => Exception = exception;
         
         static ErrorCode ErrorCodeFromException(Exception exception) => exception switch
         {

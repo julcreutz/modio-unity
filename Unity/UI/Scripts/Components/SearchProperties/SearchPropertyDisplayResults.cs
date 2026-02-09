@@ -9,7 +9,8 @@ namespace Modio.Unity.UI.Components.SearchProperties
     [Serializable]
     public class SearchPropertyDisplayResults : ISearchProperty
     {
-        [SerializeField] ModioUIGroup _modGroup;
+        [SerializeField] ModioUIModGroup _modGroup;
+        [SerializeField] ModioUICollectionGroup _collectionGroup;
 
         [SerializeField, Tooltip("(Optional) Enable this gameObject when there are zero results")]
         GameObject _displayWhenNoResults;
@@ -24,7 +25,8 @@ namespace Modio.Unity.UI.Components.SearchProperties
             if (!search.IsSearching)
             {
                 if (_modGroup != null) _modGroup.SetMods(search.LastSearchResultMods, search.LastSearchSelectionIndex);
-
+                if (_collectionGroup != null) _collectionGroup.SetMods(search.LastSearchResultModCollections, search.LastSearchSelectionIndex);
+                
                 var handledNetworkError 
                     = _displayWhenOffline != null 
                       && search.LastSearchError.Code == ErrorCode.CANNOT_OPEN_CONNECTION;
@@ -35,10 +37,10 @@ namespace Modio.Unity.UI.Components.SearchProperties
                 }
 
                 if (_displayWhenOffline != null)
-                    _displayWhenOffline.SetActive(handledNetworkError && search.LastSearchResultMods.Count == 0);
+                    _displayWhenOffline.SetActive(handledNetworkError && search.LastSearchResultMods.Count == 0 && search.LastSearchResultModCollections.Count == 0);
 
                 if (_displayWhenNoResults != null)
-                    _displayWhenNoResults.SetActive(!handledNetworkError && search.LastSearchResultMods.Count == 0);
+                    _displayWhenNoResults.SetActive(!handledNetworkError && search.LastSearchResultMods.Count == 0 && search.LastSearchResultModCollections.Count == 0);
             }
             else
             {

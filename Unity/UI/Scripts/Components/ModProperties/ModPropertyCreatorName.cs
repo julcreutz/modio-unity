@@ -1,13 +1,15 @@
-﻿using Modio.Mods;
+﻿using System;
+using Modio.Mods;
 using TMPro;
 using UnityEngine;
 
 namespace Modio.Unity.UI.Components.ModProperties
 {
-    public class ModPropertyCreatorName : IModProperty
+    public class ModPropertyCreatorName : ModioResourceProperty
     {
         [SerializeField] TMP_Text _text;
 
-        public void OnModUpdate(Mod mod) => _text.text = mod.Creator.Username;
+        protected override void OnResourceUpdate(IModioInfo resource) 
+            => _text.text = resource.Creator.Username;
     }
 }

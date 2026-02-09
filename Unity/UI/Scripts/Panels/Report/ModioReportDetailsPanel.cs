@@ -1,4 +1,6 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
+using Modio.Collections;
 using Modio.Mods;
 using Modio.Reports;
 using Modio.Unity.UI.Components;
@@ -19,7 +21,9 @@ namespace Modio.Unity.UI.Panels.Report
         [SerializeField] ModioUIButton _disableWhenInvalidToSubmit;
 
         ModioUIMod _modioUIMod;
+        ModioUICollection _modioUICollection;
         Mod _lastMod;
+        ModCollection _lastModCollection;
 
         protected override void Start()
         {
@@ -29,11 +33,18 @@ namespace Modio.Unity.UI.Panels.Report
             OnDescriptionTextChanged(_description.text);
 
             _modioUIMod = GetComponentInParent<ModioUIMod>();
+            _modioUICollection = GetComponentInParent<ModioUICollection>();
 
             if (_modioUIMod != null)
             {
                 _modioUIMod.onModUpdate.AddListener(OnModUpdated);
                 OnModUpdated();
+            }
+            
+            if (_modioUICollection != null)
+            {
+                _modioUICollection.onCollectionUpdate.AddListener(OnCollectionUpdated);
+                OnCollectionUpdated();
             }
         }
 
@@ -41,12 +52,20 @@ namespace Modio.Unity.UI.Panels.Report
         {
             base.OnDestroy();
             if (_modioUIMod != null) _modioUIMod.onModUpdate.RemoveListener(OnModUpdated);
+            if (_modioUICollection != null) _modioUICollection.onCollectionUpdate.RemoveListener(OnCollectionUpdated);
         }
 
         void OnModUpdated()
         {
             if (_lastMod == _modioUIMod?.Mod) return;
             _lastMod = _modioUIMod?.Mod;
+            _description.text = "";
+        }
+
+        void OnCollectionUpdated()
+        {
+            if (_lastModCollection == _modioUICollection.Collection) return;
+            _lastModCollection = _modioUICollection.Collection;
             _description.text = "";
         }
 
@@ -74,12 +93,21 @@ namespace Modio.Unity.UI.Panels.Report
             ClosePanel();
             if (User.Current == null) return;
 
-            Task<Error> reportTask = _modioUIMod.Mod.Report(
-                _reportType,
-                0,
-                _email.text,
-                _description.text
-            );
+            Task<Error> reportTask;
+
+            if (_modioUIMod != null && _modioUIMod.Mod != null)
+                reportTask = _modioUIMod.Mod.Report(
+                    _reportType,
+                    0,
+                    _email.text,
+                    _description.text
+                );
+            else
+                reportTask = _modioUICollection.Collection.Report(
+                    _reportType,
+                    _email.text,
+                    _description.text
+                );
 
             ModioPanelManager.GetPanelOfType<ModioReportWaitingPanel>().OpenAndWaitFor(reportTask, ReportCompleted);
         }

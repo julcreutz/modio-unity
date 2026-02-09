@@ -183,6 +183,8 @@ namespace Modio.Errors
         WALLET_FETCH_FAILED,
         /// <summary>The game does not have active monetization.</summary>
         GAME_MONETIZATION_NOT_ENABLED,
+        /// <summary>The game does not have properly configured monetization settings.</summary>
+        GAME_MONETIZATION_NOT_CONFIGURED,
         /// <summary>The payment transaction failed. Please try again later.</summary>
         PAYMENT_FAILED,
         /// <summary>The given display price does not match the price of the mod.</summary>
@@ -349,6 +351,16 @@ namespace Modio.Errors
         MONETIZATION_INCORRECT_DISPLAY_PRICE = 900035,
         /// <summary>The account has insufficent funds to make this purchase.</summary>
         MONETIZATION_INSUFFICIENT_FUNDS = 900049,
+        /// <summary>The mod does not have a SKU assigned for the given portal.</summary>
+        MONETIZATION_ENTITLEMENT_MAPPING_NOT_FOUND = 900051,
+        /// <summary>The transaction could not be finalized due to an unexpected error. The mod will still be issued to the user at this point as the portal entitlement was consumed (an irreversible operation)</summary>
+        MONETIZATION_TRANSACTION_FINALIZE_FAILED  = 900055,
+        /// <summary>The mod that was attempting to be purchased has sold out. Only applicable if the Game and Mod have enabled limited.</summary>
+        MONETIZATION_OUT_OF_STOCK = 900061,
+        /// <summary>Creation of the payment intent or the consumption of the entitlement within the third party portal failed.</summary>
+        MONETIZATION_TRANSACTION_CONSUME_FAILED = 900064,
+        /// <summary>The provided portal is not a supported platform.</summary>
+        MONETIZATION_PORTAL_INVALID  = 900098,
     }
 
     public static partial class ErrorExtensions
@@ -432,6 +444,7 @@ namespace Modio.Errors
                 ErrorCode.MONETIZATION_AUTHENTICATION_FAILED => "A failure has occured when trying to authenticate with the monetization system.",
                 ErrorCode.WALLET_FETCH_FAILED => "Unable to fetch the account's wallet. Please confirm the account has one",
                 ErrorCode.GAME_MONETIZATION_NOT_ENABLED => "The game does not have active monetization.",
+                ErrorCode.GAME_MONETIZATION_NOT_CONFIGURED => "The game does not have properly configured monetization settings.",
                 ErrorCode.PAYMENT_FAILED => "The payment transaction failed. Please try again later.",
                 ErrorCode.INCORRECT_DISPLAY_PRICE => "The given display price does not match the price of the mod.",
                 ErrorCode.ITEM_ALREADY_OWNED => "The account already owns this item.",
@@ -509,6 +522,11 @@ namespace Modio.Errors
                 ErrorCode.MONETIZATION_ITEM_ALREADY_OWNED => "The account already owns this item.",
                 ErrorCode.MONETIZATION_INCORRECT_DISPLAY_PRICE => "The given display price does not match the price of the mod.",
                 ErrorCode.MONETIZATION_INSUFFICIENT_FUNDS => "The account has insufficent funds to make this purchase.",
+                ErrorCode.MONETIZATION_ENTITLEMENT_MAPPING_NOT_FOUND => "The mod does not have a SKU assigned for the given portal.",
+                ErrorCode.MONETIZATION_TRANSACTION_FINALIZE_FAILED  => "The transaction could not be finalized due to an unexpected error. The mod will still be issued to the user at this point as the portal entitlement was consumed (an irreversible operation)",
+                ErrorCode.MONETIZATION_OUT_OF_STOCK => "The mod that was attempting to be purchased has sold out. Only applicable if the Game and Mod have enabled limited.",
+                ErrorCode.MONETIZATION_TRANSACTION_CONSUME_FAILED => "Creation of the payment intent or the consumption of the entitlement within the third party portal failed.",
+                ErrorCode.MONETIZATION_PORTAL_INVALID  => "The provided portal is not a supported platform.",
                 _ => null,
             };
             return $"{errorCode}{(string.IsNullOrWhiteSpace(message) ? string.Empty : $": {message}")}{(string.IsNullOrWhiteSpace(append) ? string.Empty : $": {append}")}";

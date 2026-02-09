@@ -7,7 +7,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Modio.API.SchemaDefinitions{
     [JsonObject(MemberSerialization.Fields)]
-    internal readonly partial struct ModMediaObject 
+    public readonly partial struct ModMediaObject 
     {
         /// <summary>Array of YouTube links.</summary>
         internal readonly string[] Youtube;

@@ -5,16 +5,16 @@ using UnityEngine;
 namespace Modio.Unity.UI.Components.ModProperties
 {
     [Serializable]
-    public class ModPropertyDateUpdated : ModPropertyDateBase
+    public class ModPropertyDateUpdated : ModioResourcePropertyDateBase
     {
         [SerializeField] GameObject _disableIfNoUpdate;
 
-        protected override DateTime GetValue(Mod mod) => mod.DateUpdated;
+        protected override DateTime GetValue(IModioInfo mod) => mod.DateUpdated;
 
-        public override void OnModUpdate(Mod mod)
+        protected override void OnResourceUpdate(IModioInfo resource)
         {
-            base.OnModUpdate(mod);
-            if (_disableIfNoUpdate != null) _disableIfNoUpdate.SetActive(mod.DateUpdated != mod.DateLive);
+            base.OnResourceUpdate(resource);
+            if (_disableIfNoUpdate != null) _disableIfNoUpdate.SetActive(resource.DateUpdated != resource.DateLive);
         }
     }
 }

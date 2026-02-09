@@ -10,12 +10,13 @@ using Modio.Errors;
 using Modio.Extensions;
 using Modio.Images;
 using Modio.Mods;
+using Modio.Reports;
 using Modio.Users;
 using Plugins.Modio.Modio.Ratings;
 
 namespace Modio.Collections
 {
-    public class ModCollection
+    public class ModCollection : IModioInfo
     {
         /// <summary>Posts an event whenever this mod collection has been updated.</summary>
         public event Action OnModCollectionUpdated;
@@ -63,52 +64,57 @@ namespace Modio.Collections
 #region ModCollectionProperties
 
         /// <summary>The collection id.</summary>
-        internal ModCollectionId Id { get; }
+        public ModioId Id { get; }
         /// <summary>The game id.</summary>
         internal long GameId { get; private set; }
         /// <summary>The status of the collection.</summary>
         internal long Status { get; private set; }
         /// <summary>Visibility status of the collection.</summary>
-        internal bool Visible { get; set; }
+        internal bool Visible { get; private set; }
         /// <summary>The user who submitted the collection.</summary>
-        internal UserProfile Creator { get; private set; }
+        public UserProfile Creator { get; private set; }
         /// <summary>The category of the collection.</summary>
-        internal string Category { get; set; }
+        internal string Category { get; private set; }
         /// <summary>The date the collection was added.</summary>
-        internal DateTime DateAdded { get; set; }
+        internal DateTime DateAdded { get; private set; }
         /// <summary>The date the collection was last updated.</summary>
-        internal DateTime DateUpdated { get; private set; }
+        public DateTime DateUpdated { get; private set; }
         /// <summary>The date the collection went live.</summary>
-        internal DateTime DateLive { get; private set; }
+        public DateTime DateLive { get; private set; }
         /// <summary>The maximum limit of mods allowed in this collection.</summary>
-        internal long LimitNumberMods { get; set; }
+        internal long LimitNumberMods { get; private set; }
         /// <summary>The maturity options detected within this collection.</summary>
-        internal ModMaturityOptions MaturityOptions { get; private set; }
+        public ModMaturityOptions MaturityOptions { get; private set; }
         /// <summary>The total filesize of all mods in the collection.</summary>
-        internal long ArchiveFilesize { get; set; }
+        public long ArchiveFilesize { get; private set; }
         /// <summary>The total uncompressed filesize of all mods in the collection.</summary>
-        internal long Filesize { get; set; }
+        public long Filesize { get; private set; }
         /// <summary>The platforms the mods are compatible within this collection.</summary>
-        internal string[] Platforms { get; set; }
+        internal string[] Platforms { get; private set; }
         /// <summary>The tags associated with the collection.</summary>
-        internal ModTag[] Tags { get; private set; }
+        public ModTag[] Tags { get; private set; }
         /// <summary>The stats of the collection.</summary>
-        internal ModCollectionStats Stats { get; private set; }
+        public ModCollectionStats Stats { get; private set; }
         /// <summary>The logo of the collection.</summary>
         public ModioImageSource<Mod.LogoResolution> Logo { get; private set; }
         /// <summary>The name of the collection.</summary>
-        internal string Name { get; private set; }
+        public string Name { get; private set; }
         /// <summary>The name id of the collection.</summary>
-        internal string NameId { get; private set; }
+        public string NameId { get; private set; }
         /// <summary>The summary of the collection.</summary>
-        internal string Summary => _summaryDecoded ??= WebUtility.HtmlDecode(_summaryHtmlEncoded);
+        public string Summary => _summaryDecoded ??= WebUtility.HtmlDecode(_summaryHtmlEncoded);
         /// <summary>The description of the collection.</summary>
-        internal string Description { get; private set; }
+        public string Description { get; private set; }
 
         /// <summary>Whether the collection is followed by the user.</summary>
         public bool IsFollowed { get; private set; }
+        bool IModioInfo.IsSubscribed => IsFollowed;
+        
+        //TODO: actually store this
+        public ModioRating CurrentUserRating { get; private set; }
 
         Mod[] _mods;
+        TaskCompletionSource<(Error error, IReadOnlyList<Mod> results)> _ongoingModFetch;
 
         public static async Task<(Error error, ModioPage<ModCollection> page)> GetCollections(
             ModioAPI.Collections.GetModCollectionsFilter filter
@@ -165,7 +171,7 @@ namespace Modio.Collections
         string _summaryHtmlEncoded;
         string _summaryDecoded;
 
-        internal ModCollection(ModCollectionId id) => Id = id;
+        internal ModCollection(ModioId id) => Id = id;
 
         internal ModCollection(ModCollectionObject modCollectionObject)
         {
@@ -173,7 +179,7 @@ namespace Modio.Collections
             ApplyDetailsFromModCollectionObject(modCollectionObject);
         }
 
-        public static ModCollection Get(long id) => ModCollectionCache.GetCached(new ModCollectionId(id));
+        public static ModCollection Get(long id) => ModCollectionCache.GetCached(new ModioId(id));
 
         internal ModCollection ApplyDetailsFromModCollectionObject(ModCollectionObject modObject)
         {
@@ -191,7 +197,7 @@ namespace Modio.Collections
 
             _summaryHtmlEncoded = modObject.Summary;
             _summaryDecoded = null;
-            Description = modObject.Description;
+            Description = modObject.DescriptionPlaintext ?? modObject.Description;
 
             Creator = UserProfile.Get(modObject.SubmittedBy);
 
@@ -199,7 +205,11 @@ namespace Modio.Collections
             DateLive = modObject.DateLive.GetLocalDateTime();
             DateUpdated = modObject.DateUpdated.GetLocalDateTime();
 
-            Tags = modObject.Tags.Select(ModTag.Get).ToArray();
+            Tags = new ModTag[modObject.Tags.Length + 1];
+
+            Tags[0] = ModTag.Get(modObject.Category,  ResourceTagType.CollectionCategory);
+            for (int i = 0; i < modObject.Tags.Length; i++)
+                Tags[i + 1] = ModTag.Get(modObject.Tags[i], ResourceTagType.CollectionTag);
 
             MaturityOptions = (ModMaturityOptions)modObject.MaturityOption;
 
@@ -211,7 +221,10 @@ namespace Modio.Collections
                 modObject.Logo.Original
             );
 
-            Stats = new ModCollectionStats(modObject.Stats);
+            if (User.Current.TryGetRating(Id, ModioResourceType.Collection, out ModioRating rating))
+                CurrentUserRating = rating;
+            
+            Stats = new ModCollectionStats(modObject.Stats, CurrentUserRating);
 
             InvokeModCollectionUpdated(ModCollectionChangeType.Everything);
             return this;
@@ -287,6 +300,11 @@ namespace Modio.Collections
             if (_mods != null)
                 return (Error.None, _mods);
 
+            if (_ongoingModFetch != null)
+                return await _ongoingModFetch.Task;
+
+            _ongoingModFetch = new TaskCompletionSource<(Error error, IReadOnlyList<Mod> results)>();
+
             ModioAPI.Collections.GetCollectionModsFilter filter = ModioAPI.Collections.FilterGetCollectionMods();
 
             List<ModObject> modObjects;
@@ -298,7 +316,11 @@ namespace Modio.Collections
             );
 
             if (error)
+            {
+                _ongoingModFetch.SetResult((error, Array.Empty<Mod>()));
+                _ongoingModFetch = null;
                 return (error, Array.Empty<Mod>());
+            }
 
             _mods = new Mod[modObjects.Count];
 
@@ -310,6 +332,8 @@ namespace Modio.Collections
 
             InvokeModCollectionUpdated(ModCollectionChangeType.ModList);
 
+            _ongoingModFetch.SetResult((error, _mods));
+            _ongoingModFetch = null;
             return (Error.None, _mods);
         }
 
@@ -374,19 +398,19 @@ namespace Modio.Collections
         /// <summary>
         /// Helps to follow or unfollow this collection.
         /// </summary>
-        /// <param name="followIntent">The intent to follow or unfollow the collection.</param>
+        /// <param name="isFollowed">The intent to follow or unfollow the collection.</param>
         /// <returns>An <see cref="Error"/> indicating the success or failure of the operation.</returns>
-        async Task<Error> SetFollowed(bool followIntent)
+        async Task<Error> SetFollowed(bool isFollowed)
         {
-            if (IsFollowed == followIntent)
+            if (IsFollowed == isFollowed)
                 return Error.None;
 
             //Set pending follow
-            UpdateLocalFollowStatus(followIntent);
+            UpdateLocalFollowStatus(isFollowed);
 
             Error error;
 
-            if (followIntent)
+            if (isFollowed)
             {
                 ModCollectionObject? collection;
                 (error, collection) = await ModioAPI.Collections.FollowCollection(Id);
@@ -397,7 +421,7 @@ namespace Modio.Collections
             else
                 (error, _) = await ModioAPI.Collections.UnfollowCollection(Id);
 
-            switch (followIntent)
+            switch (isFollowed)
             {
                 case true
                     when error:
@@ -423,6 +447,7 @@ namespace Modio.Collections
                 return;
 
             IsFollowed = followed;
+            InvokeModCollectionUpdated(ModCollectionChangeType.IsFollowed);
         }
 
 #endregion
@@ -436,7 +461,13 @@ namespace Modio.Collections
         /// <returns>An <see cref="Error"/> indicating the success or failure of the operation.</returns>
         public async Task<Error> Rate(ModioRating rating)
         {
+            var oldRating = CurrentUserRating;
+            CurrentUserRating = rating;
+            Stats.UpdateEstimateFromLocalRatingChange(rating);
+
+            // We invoke here ahead of the request for UI responsiveness
             InvokeModCollectionUpdated(ModCollectionChangeType.Rating);
+
             var body = new AddRatingRequest((long)rating);
             (Error error, _) = await ModioAPI.Ratings.AddCollectionRating(Id, body);
 
@@ -445,14 +476,45 @@ namespace Modio.Collections
                 if (!error.IsSilent)
                     ModioLog.Warning?.Log($"Error rating mod {Id}: {error.GetMessage()}");
 
+                CurrentUserRating = oldRating;
+                Stats.UpdateEstimateFromLocalRatingChange(rating);
+                
+                // If an error occurs, we reset the rating
                 InvokeModCollectionUpdated(ModCollectionChangeType.Rating);
             }
 
             return error;
         }
 
-#endregion
+        internal void SetCurrentUserRating(ModioRating rating)
+        {
+            CurrentUserRating = rating;
+            Stats?.UpdatePreviousRating(rating);
+            InvokeModCollectionUpdated(ModCollectionChangeType.Rating);
+        }
 
+#endregion
+        
+        public async Task<Error> Report(ReportType reportType, string contact, string summary)
+        {
+            if (User.Current == null || !User.Current.IsAuthenticated)
+                return (Error)ErrorCode.USER_NOT_AUTHENTICATED;
+
+            var request = new AddReportRequest(
+                ReportResourceTypes.COLLECTIONS,
+                Id,
+                (long)reportType,
+                0,
+                null,
+                User.Current.Profile.Username,
+                contact,
+                summary
+            );
+
+            (Error error, _) = await ModioAPI.Reports.SubmitReport(request);
+            return error;
+        }
+        
         /// <summary>
         /// Invokes the <see cref="OnModCollectionUpdated"/> event and notifies all subscribers
         /// </summary>

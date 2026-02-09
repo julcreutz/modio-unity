@@ -795,7 +795,12 @@ PrefabInstance:
     - target: {fileID: 7437567118892496458, guid: 52354acc23f091247be1a31c94b78df4,
         type: 3}
       propertyPath: _key
-      value: modio_btn_tokens_packs
+      value: modio_tokens_purchase_header
+      objectReference: {fileID: 0}
+    - target: {fileID: 7437567118892496458, guid: 52354acc23f091247be1a31c94b78df4,
+        type: 3}
+      propertyPath: _splitFormatArgs.Array.size
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 8263339123243778538, guid: 52354acc23f091247be1a31c94b78df4,
         type: 3}
@@ -830,6 +835,18 @@ MonoBehaviour:
   m_FlexibleWidth: -1
   m_FlexibleHeight: -1
   m_LayoutPriority: 1
+--- !u!114 &4749722866284012591
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3876202606775594426}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 85b5d790111c4884a73fb4f358fec933, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!224 &4674687442296116790 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 6036581304000938901, guid: 52354acc23f091247be1a31c94b78df4,

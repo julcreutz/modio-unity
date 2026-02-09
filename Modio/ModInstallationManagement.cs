@@ -38,7 +38,7 @@ namespace Modio
 
         static Queue<Job> _operationQueue;
 
-        static HashSet<ModId> _currentSessionMods = new HashSet<ModId>();
+        static HashSet<ModioId> _currentSessionMods = new HashSet<ModioId>();
         static HashSet<Mod> _modsToUninstall = new HashSet<Mod>();
         static HashSet<Mod> _unverifiedMods = new HashSet<Mod>(); // present at session start and not yet checked
         static bool _hasScannedMissingMods;
@@ -64,9 +64,8 @@ namespace Modio
         /// <summary>
         /// Returns the number of operations in queue does not include the current operation
         /// </summary>
-        public static int PendingModOperationCount => _operationQueue?.Count ?? 0;
+        public static int PendingModOperationCount => _operationQueue?.Count(job => job.IsVisible) ?? 0;
 
-        
         internal static async Task<Error> Init()
         {
             (Error error, ModIndex index) = await ModioClient.DataStorage.ReadIndexData();
@@ -103,6 +102,9 @@ namespace Modio
                 // Don't want to override synced sub status here, only if we couldn't get them do we set
                 if (!User.Current.ModRepository.HasGotSubscriptions)
                     mod.UpdateLocalSubscriptionStatus(entry.Subscribers.Contains(User.Current.Profile.UserId));
+
+                if (mod.File?.State is ModFileState.FileOperationFailed or ModFileState.Queued or ModFileState.None)
+                    continue;
                 
                 _unverifiedMods.Add(mod);
             }
@@ -321,7 +323,7 @@ namespace Modio
 
             foreach (KeyValuePair<long, ModIndex.IndexEntry> entry in _index.Index)
             {
-                var modId = new ModId(entry.Key);
+                var modId = new ModioId(entry.Key);
 
                 bool localUserIsSubscribed = User.Current.ModRepository.IsSubscribed(modId);
 
@@ -418,13 +420,13 @@ namespace Modio
         [ModioDebugMenu(ShowInSettingsMenu = false)]
         static void StartTempModSession()
         {
-            List<ModId> modIds = TempMods?.Split(',').Select(s =>
+            List<ModioId> modIds = TempMods?.Split(',').Select(s =>
             {
                 if (long.TryParse(s.Trim(), out long modId))
-                    return new ModId(modId);
+                    return new ModioId(modId);
 
                 ModioLog.Error?.Log($"Couldn't parse {s} to a modId. Please use comma separated ID numbers");
-                return default(ModId);
+                return default(ModioId);
             }).ToList();
 
             if (modIds == null || modIds.Count == 0)
@@ -446,7 +448,7 @@ namespace Modio
         /// An asynchronous task that returns <see cref="Error"/>.<see cref="Error.None"/> on success.
         /// </returns>
         /// <seealso cref="EndCurrentTempModSession"/>
-        public static async Task<Error> StartTempModSession(List<ModId> tempMods, bool appendCurrentSession = false)
+        public static async Task<Error> StartTempModSession(List<ModioId> tempMods, bool appendCurrentSession = false)
         {
             if (_currentSessionMods.Count == 0 && !appendCurrentSession)
             {
@@ -459,7 +461,7 @@ namespace Modio
                 EndCurrentTempModSession();
             }
 
-            foreach (ModId mod in tempMods) _currentSessionMods.Add(mod);
+            foreach (ModioId mod in tempMods) _currentSessionMods.Add(mod);
 
             return await AddTemporaryMods(tempMods, 0);
         }
@@ -483,7 +485,7 @@ namespace Modio
         /// <returns>
         /// An asynchronous task that returns <see cref="Error"/>.<see cref="Error.None"/> on success.
         /// </returns>
-        public static async Task<Error> AddTemporaryMods(List<ModId> tempMods, int lifeTimeDaysOverride = -1)
+        public static async Task<Error> AddTemporaryMods(List<ModioId> tempMods, int lifeTimeDaysOverride = -1)
         {
             int lifeTimeDays = lifeTimeDaysOverride > -1
                 ? lifeTimeDaysOverride
@@ -670,6 +672,7 @@ namespace Modio
             public readonly Mod Mod;
             protected readonly CancellationToken CancellationToken;
             protected OperationPhase Phase;
+            public virtual bool IsVisible => true;
 
             protected Job(Mod mod, OperationType type)
             {
@@ -1158,6 +1161,8 @@ namespace Modio
         
         class ValidateJob : Job
         {
+            public override bool IsVisible => false;
+
             public ValidateJob(Mod mod) : base(mod, OperationType.Validate)
             {
             }
@@ -1204,6 +1209,8 @@ namespace Modio
         /// </summary>
         class ScanMissingInstallsJob : Job
         {
+            public override bool IsVisible => false;
+
             public ScanMissingInstallsJob() : base(null, OperationType.Scan)
             {
             }
@@ -1260,6 +1267,29 @@ namespace Modio
         {
             long spaceRequired = 0;
             long tempSpaceRequired = 0;
+            
+            long depSpaceRequired = 0;
+            long largestDepArchiveSize = 0;
+
+            if (mod.Dependencies.HasDependencies)
+            {
+                (Error error, IReadOnlyList<Mod> results) = await mod.Dependencies.GetAllDependencies();
+
+                if (!error)
+                {
+                    foreach (Mod dependency in results)
+                    {
+                        if (mod.File.ArchiveFileSize > largestDepArchiveSize)
+                            largestDepArchiveSize = mod.File.ArchiveFileSize;
+                    
+                        if (dependency.File.State is not ModFileState.None 
+                                                     and not ModFileState.FileOperationFailed)
+                            continue;
+
+                        depSpaceRequired += dependency.File.FileSize;
+                    }
+                }
+            }
 
             _currentOperation?.GetPendingSpaceChange(ref spaceRequired, ref tempSpaceRequired);
 
@@ -1268,27 +1298,47 @@ namespace Modio
             if (DownloadAndExtractAsSingleJob)
                 return await ModioClient.DataStorage.IsThereAvailableFreeSpaceFor(
                     tempSpaceRequired,
-                    spaceRequired + mod.File.FileSize
+                    spaceRequired + mod.File.FileSize + depSpaceRequired
                 );
 
             return await ModioClient.DataStorage.IsThereAvailableFreeSpaceFor(
-                tempSpaceRequired + mod.File.ArchiveFileSize,
-                spaceRequired + mod.File.FileSize
+                tempSpaceRequired + mod.File.ArchiveFileSize + largestDepArchiveSize,
+                spaceRequired + mod.File.FileSize + depSpaceRequired
             );
         }
         
         /// <summary>
         /// Returns if there is enough available space to install a Mod, will account for pending jobs.
         /// </summary>
-        /// <param name="mod">The mod check available space for</param>
+        /// <param name="collection">The mod check available space for</param>
         /// <returns>
         /// An asynchronous task that returns <c>true</c> if there is enough space, <c>false</c> otherwise.
         /// </returns>
-        public static async Task<bool> IsThereAvailableSpaceFor(ModCollection mod)
+        public static async Task<bool> IsThereAvailableSpaceFor(ModCollection collection)
         {
             long spaceRequired = 0;
             long tempSpaceRequired = 0;
 
+            long totalFileSize = collection.Filesize;
+            long largestArchiveSize = 0;
+
+            (Error error, IReadOnlyList<Mod> results) = await collection.GetMods();
+
+            if (!error)
+            {
+                foreach (Mod mod in results)
+                {
+                    if (mod.File.ArchiveFileSize > largestArchiveSize)
+                        largestArchiveSize = mod.File.ArchiveFileSize;
+
+                    if (mod.File.State is ModFileState.None 
+                                          or ModFileState.FileOperationFailed)
+                        continue;
+
+                    totalFileSize -= mod.File.FileSize;
+                }
+            }
+            
             _currentOperation?.GetPendingSpaceChange(ref spaceRequired, ref tempSpaceRequired);
 
             foreach (Job job in _operationQueue) job.GetPendingSpaceChange(ref spaceRequired, ref tempSpaceRequired);
@@ -1296,12 +1346,12 @@ namespace Modio
             if (DownloadAndExtractAsSingleJob)
                 return await ModioClient.DataStorage.IsThereAvailableFreeSpaceFor(
                     tempSpaceRequired,
-                    spaceRequired + mod.Filesize
+                    spaceRequired + totalFileSize
                 );
 
             return await ModioClient.DataStorage.IsThereAvailableFreeSpaceFor(
-                tempSpaceRequired + mod.ArchiveFilesize,
-                spaceRequired + mod.Filesize
+                tempSpaceRequired + largestArchiveSize,
+                spaceRequired + totalFileSize
             );
         }
 

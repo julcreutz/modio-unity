@@ -7,18 +7,18 @@ using Newtonsoft.Json.Linq;
 
 namespace Modio.API.SchemaDefinitions{
     [JsonObject]
-    internal readonly partial struct EpicGamesAuthenticationRequest : IApiRequest
+    public readonly partial struct EpicGamesAuthenticationRequest : IApiRequest
     {
         static readonly Dictionary<string, object> _bodyParameters = new Dictionary<string, object>();
 
         /// <summary></summary>
-        internal readonly string AccessToken;
+        public readonly string AccessToken;
         /// <summary></summary>
-        internal readonly bool TermsAgreed;
+        public readonly bool TermsAgreed;
         /// <summary></summary>
-        internal readonly string Email;
+        public readonly string Email;
         /// <summary></summary>
-        internal readonly long DateExpires;
+        public readonly long DateExpires;
 
         /// <param name="accessToken"></param>
         /// <param name="termsAgreed"></param>

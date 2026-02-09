@@ -7,6 +7,7 @@ using Newtonsoft.Json.Linq;
 using Modio.API.SchemaDefinitions;
 using Modio.Errors;
 using Modio.Extensions;
+using Modio.Users;
 
 namespace Modio.API
 {
@@ -174,5 +175,6 @@ namespace Modio.API
 #endregion
         
         }
+
     }
 }

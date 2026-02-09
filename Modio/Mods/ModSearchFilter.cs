@@ -50,6 +50,7 @@ namespace Modio.Mods
         Dictionary<Filtering, List<string>> _searchPhrases;
         List<string> _tags;
         List<UserProfile> _users;
+        string _collectionCategory;
         
         public bool ShowMatureContent { get; set; }
         public SearchFilterPlatformStatus PlatformStatus  { get; set; } = SearchFilterPlatformStatus.None;
@@ -154,9 +155,18 @@ namespace Modio.Mods
         {
             _tags?.Clear();
         }
+        
+        public int TagAndCategoryCount => (_tags?.Count ?? 0) + (!string.IsNullOrEmpty(_collectionCategory) ? 1 : 0);
 
         public IReadOnlyList<string> GetTags() => _tags ?? (IReadOnlyList<string>)Array.Empty<string>() ;
 
+        public void AddCollectionCategory(string category)
+        {
+            _collectionCategory = category;
+        }
+        
+        public string GetCollectionCategory() => _collectionCategory;
+        
         /// <summary>
         /// Adds a specific user to the filter, so that mods that were not created by the user
         /// (or other users added to the filter) will not be returned.
@@ -183,6 +193,9 @@ namespace Modio.Mods
             if (_tags != null && _tags.Count > 0) filter.Tags(_tags);
             
             if(_users != null && _users.Count > 0) filter.SubmittedBy(_users.Select(u => u.UserId).ToArray());
+            
+            if(_collectionCategory != null)
+                filter.CollectionCategory(_collectionCategory);
 
             filter.MaturityOption(ShowMatureContent ? 0b1111 : 0b0000,
                 ShowMatureContent ? Filtering.BitwiseAnd : Filtering.None);
@@ -214,6 +227,17 @@ namespace Modio.Mods
             //filter.Stock(ShowSoldOut ? 0 : 1);
             
             return filter;
+        }
+
+        public ModSearchFilter Clone()
+        {
+            var clone = (ModSearchFilter)MemberwiseClone();
+            
+            if (_searchPhrases != null) clone._searchPhrases = new Dictionary<Filtering, List<string>>(_searchPhrases);
+            if (_tags != null) clone._tags = new List<string>(_tags);
+            if (_users != null) clone._users = new List<UserProfile>(_users);
+            
+            return clone;
         }
     }
 }

@@ -137,8 +137,8 @@ namespace Modio.Unity.UI.Panels
 
         public void InvokeAction()
         {
-            if (_action != null) _action.Invoke();
             ClosePanel();
+            if (_action != null) _action.Invoke();
         }
     }
 }

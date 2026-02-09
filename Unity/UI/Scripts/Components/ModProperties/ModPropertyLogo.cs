@@ -7,7 +7,7 @@ using UnityEngine.UI;
 namespace Modio.Unity.UI.Components.ModProperties
 {
     [Serializable]
-    public class ModPropertyLogo : IModProperty
+    public class ModPropertyLogo : ModioResourceProperty
     {
         [SerializeField] RawImage _image;
         [SerializeField] Mod.LogoResolution _resolution = Mod.LogoResolution.X320_Y180;
@@ -21,7 +21,7 @@ namespace Modio.Unity.UI.Components.ModProperties
         GameObject _loadedActive;
         LazyImage<Texture2D> _lazyImage;
 
-        public void OnModUpdate(Mod mod)
+        protected override void OnResourceUpdate(IModioInfo resource)
         {
             _lazyImage ??= new LazyImage<Texture2D>(
                 ImageCacheTexture2D.Instance,
@@ -36,7 +36,7 @@ namespace Modio.Unity.UI.Components.ModProperties
                 }
             );
             
-            _lazyImage.SetImage(mod.Logo, _resolution);
+            _lazyImage.SetImage(resource.Logo, _resolution);
         }
     }
 }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Threading.Tasks;
 using Modio.API.Interfaces;
 
 namespace Modio.FileIO
@@ -31,6 +32,6 @@ namespace Modio.FileIO
         /// Typically returns "C:\Users\&lt;UserName&gt;\AppData\Roaming"
         /// </returns>
         /// </summary>
-        public string UserPath  => $"{Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)}";
+        public Task<string> GetUserPath() => Task.FromResult($"{Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)}");
     }
 }

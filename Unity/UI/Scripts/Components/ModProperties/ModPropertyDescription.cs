@@ -6,10 +6,11 @@ using UnityEngine;
 namespace Modio.Unity.UI.Components.ModProperties
 {
     [Serializable]
-    public class ModPropertyDescription : IModProperty
+    public class ModPropertyDescription : ModioResourceProperty
     {
         [SerializeField] TMP_Text _text;
 
-        public void OnModUpdate(Mod mod) => _text.text = mod.Description;
+        protected override void OnResourceUpdate(IModioInfo resource)
+            => _text.text = resource.Description;
     }
 }

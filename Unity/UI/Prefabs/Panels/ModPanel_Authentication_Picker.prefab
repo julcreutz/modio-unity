@@ -1561,6 +1561,9 @@ MonoBehaviour:
   - Portal: 10
     Icon: {fileID: 21300000, guid: 185dd140e706341438f5d0fef6a2e6f9, type: 3}
     Name: Steam
+  - Portal: 2
+    Icon: {fileID: 21300000, guid: d53ef2ab55e711143b7e13ef226f8077, type: 3}
+    Name: Epic
   _authPortalIcon: {fileID: 6166220538824609048}
   _text: {fileID: 6852753277735771689}
   _localization: {fileID: 4565827076800345639}

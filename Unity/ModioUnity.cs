@@ -6,6 +6,7 @@ using Modio.Authentication;
 using Modio.Extensions;
 using Modio.Platforms;
 using Modio.FileIO;
+using Modio.Monetization;
 using Modio.Platforms.Wss;
 using UnityEngine;
 
@@ -41,12 +42,24 @@ namespace Modio.Unity
                     modioUnitySettings.Settings.PlatformSettings = modioUnitySettings.Settings.PlatformSettings.Append(wssSettings).ToArray();
                 }
             
+            if (ModioCommandLine.TryGetArgument("monetizationtype", out string monetizationType))
+            {
+                if(modioUnitySettings.Settings.TryGetPlatformSettings(out MonetizationSettings monetizationSettings))
+                    monetizationSettings.MonetizationType = Enum.Parse<ModioMonetizationType>(monetizationType, true);
+                else
+                {
+                    monetizationSettings = new MonetizationSettings { MonetizationType = Enum.Parse<ModioMonetizationType>(monetizationType, true), };
+                    modioUnitySettings.Settings.PlatformSettings = modioUnitySettings.Settings.PlatformSettings.Append(monetizationSettings).ToArray();
+                    
+                }
+            }
+            
             ModioServices.Bind<IModioLogHandler>().FromNew<ModioUnityLogger>(ModioServicePriority.EngineImplementation);
 
             var environmentDetails = $"Unity; {Application.unityVersion}; {Application.platform}";
             ModioLog.Verbose?.Log(environmentDetails);
             
-            Error.StoreStackTraceWhenCreated = true;
+            Error.StoreStackTraceWhenCreated = false;
             
             Version.AddEnvironmentDetails(environmentDetails);
 
@@ -93,7 +106,7 @@ namespace Modio.Unity
                          .WithInterfaces<IModioAuthService>()
                          .WithInterfaces<IGetActiveUserIdentifier>()
                          .FromNew<WssAuthService>(
-                             ModioServicePriority.PlatformProvided,
+                             ModioServicePriority.PlatformProvided-5, // Slightly lower priority than default platform auth services
                              () => ModioServices.Resolve<ModioSettings>()?.TryGetPlatformSettings(out WssSettings _)
                                    ?? false
                          );

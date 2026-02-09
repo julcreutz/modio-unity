@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using Modio.API;
 using Modio.Unity.UI.Components.Localization;
 using Modio.Unity.UI.Search;
@@ -32,10 +33,16 @@ namespace Modio.Unity.UI.Components.SearchProperties
                 _searchText.enabled = searchHasEntries;
                 if (searchHasEntries) _searchText.text = $"{string.Join(" ", searchPhrases)}";
 
-                if (SpecialSearchType.SearchForTag == search.LastSearchPreset)
+                if (search.LastSearchPreset == SpecialSearchType.SearchForTag ||
+                    (search.LastSearchPreset == SpecialSearchType.SearchCollections && filter.TagAndCategoryCount > 0))
                 {
                     _searchText.enabled = true;
-                    var tags = filter.GetTags();
+                    IReadOnlyList<string> tags = filter.GetTags();
+                    string collectionCategory = filter.GetCollectionCategory();
+
+                    if (!string.IsNullOrEmpty(collectionCategory)) 
+                        tags = new List<string>(tags) { collectionCategory, };
+                    
                     _searchText.text = $"{string.Join(" ", tags)}";
                 }
             }

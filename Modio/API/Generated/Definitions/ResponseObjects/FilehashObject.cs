@@ -7,7 +7,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Modio.API.SchemaDefinitions{
     [JsonObject]
-    internal readonly partial struct FilehashObject 
+    public readonly partial struct FilehashObject 
     {
         /// <summary>MD5 hash of the file.</summary>
         internal readonly string Md5;

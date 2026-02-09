@@ -3,6 +3,7 @@ using Modio.API;
 using Modio.Authentication;
 using Modio.Extensions;
 using Modio.FileIO;
+using Modio.Mods;
 using Modio.Platforms.Wss;
 using Modio.Unity.Settings;
 using Modio.Unity.UI.Scripts.Themes;
@@ -12,6 +13,7 @@ namespace Modio.Unity.UI.Panels
 {
     public class ModioExampleSettingsPanel : ModioPanelBase
     {
+        string _stage = string.Empty;
         bool _hasDoneSetup;
         ModioSettings _settings = new ModioSettings();
         ModioDebugMenu _debugMenu;
@@ -58,8 +60,8 @@ namespace Modio.Unity.UI.Panels
             {
                 _settings.GameId = id;
 
-                if (_settings.ServerURL.Contains("api-staging"))
-                    _settings.ServerURL = StagingUrl();
+                if (_settings.ServerURL.Contains("moddemo"))
+                    _settings.ServerURL = StagingUrl(_stage);
                 else if (_settings.ServerURL.Contains("test"))
                     _settings.ServerURL = TestUrl(_settings.GameId);
                 else
@@ -82,11 +84,13 @@ namespace Modio.Unity.UI.Panels
                 () => _settings.ServerURL.Contains("api-staging"),
                 staging =>
                 {
-                    if (staging) _settings.ServerURL = StagingUrl();
+                    if (staging) _settings.ServerURL = StagingUrl(_stage);
                     _debugMenu.SetToDefaults();
                 }
             );
-
+            
+            _debugMenu.AddTextField("Stage Name", () => _stage, stage => _stage = stage);
+            
             _debugMenu.AddToggle(
                 "Test Environment",
                 () => _settings.ServerURL.Contains("test"),
@@ -97,13 +101,12 @@ namespace Modio.Unity.UI.Panels
                 }
             );
             
-            
             _debugMenu.AddTextField("Default Language:", () => _settings.DefaultLanguage, isoCode => _settings.DefaultLanguage = isoCode);
 
             _debugMenu.AddLabel("\nTUI Settings");
-            _debugMenu.AddToggle("Show monetization", 
+            /*_debugMenu.AddToggle("Show monetization", 
                     () => Get<ModioComponentUISettings>().ShowMonetizationUI,
-                    on => Get<ModioComponentUISettings>().ShowMonetizationUI = on);
+                    on => Get<ModioComponentUISettings>().ShowMonetizationUI = on);*/
             _debugMenu.AddToggle("Show enabled", 
                     () => Get<ModioComponentUISettings>().ShowEnableModToggle,
                     on => Get<ModioComponentUISettings>().ShowEnableModToggle = on);
@@ -178,7 +181,7 @@ namespace Modio.Unity.UI.Panels
                         Get<WssSettings>();
                     else
                         _settings.PlatformSettings = _settings.PlatformSettings
-                                                              .Where(s => s is not ModioEnableDebugMenu)
+                                                              .Where(s => s is not WssSettings)
                                                               .ToArray();
                 }
             );
@@ -244,7 +247,7 @@ namespace Modio.Unity.UI.Panels
             _debugMenu.AddButton("Close without applying some settings", ClosePanel);
         }
 
-        string StagingUrl() => "https://api-staging.moddemo.io/v1";
+        string StagingUrl(string stage) => $"https://api-staging{(!string.IsNullOrEmpty(stage)?$"-{stage}":"")}.moddemo.io/v1";
         string ProductionUrl(long gameId) => $"https://g-{gameId}.modapi.io/v1";
         string TestUrl(long gameId) => $"https://g-{gameId}.test.mod.io/v1";
     }

@@ -1,6 +1,6 @@
-﻿using Modio.Unity.UI.Components.Selectables;
+﻿using Modio.Editor.Common;
+using Modio.Unity.UI.Components.Selectables;
 using Modio.Unity.UI.Components.Selectables.Transitions;
-using Modio.Unity.UI.Editor.Common;
 using UnityEditor;
 using UnityEditorInternal;
 

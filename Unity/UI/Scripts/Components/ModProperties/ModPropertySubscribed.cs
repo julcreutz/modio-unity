@@ -5,15 +5,15 @@ using UnityEngine;
 namespace Modio.Unity.UI.Components.ModProperties
 {
     [Serializable]
-    public class ModPropertySubscribed : IModProperty
+    public class ModPropertySubscribed : ModioResourceProperty
     {
         [SerializeField] GameObject _notSubscribedActive;
         [SerializeField] GameObject _subscribedActive;
 
-        public void OnModUpdate(Mod mod)
+        protected override void OnResourceUpdate(IModioInfo resource)
         {
-            if (_notSubscribedActive != null) _notSubscribedActive.SetActive(!mod.IsSubscribed);
-            if (_subscribedActive != null) _subscribedActive.SetActive(mod.IsSubscribed);
+            if (_notSubscribedActive != null) _notSubscribedActive.SetActive(!resource.IsSubscribed);
+            if (_subscribedActive != null) _subscribedActive.SetActive(resource.IsSubscribed);
         }
     }
 }

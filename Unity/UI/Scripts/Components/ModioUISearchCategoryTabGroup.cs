@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using Modio.Monetization;
 using Modio.Unity.Settings;
 using Modio.Unity.UI.Components.Localization;
 using Modio.Unity.UI.Search;
@@ -17,26 +18,52 @@ namespace Modio.Unity.UI.Components
         [SerializeField] ModioUILocalizedText _categoryNameLocalized;
 
         readonly List<ModioUISearchCategoryTab> _tabs = new List<ModioUISearchCategoryTab>();
-
+        ModioUISearchCategory _currentCategory;
+        
         bool _hasRunStart;
         int _activeTabCount;
         int _setCategoryOnFrame;
 
+        ModioUISearchCategory _lastCategory;
+        int _lastCategoryIndex;
+
         public void ClearCategory()
         {
-            if(_setCategoryOnFrame != Time.frameCount)
-                SetCategory(null);
+            if (_setCategoryOnFrame == Time.frameCount) return;
+            
+            _lastCategory = null;
+            SetCategory(null);
+        }
+
+        public void ClearCategoryAndStoreLastSelection()
+        {
+            if (_setCategoryOnFrame == Time.frameCount) return;
+            
+            _lastCategory = _currentCategory;
+
+            int i;
+            for (i = 0; i < _tabs.Count; i++)
+            {
+                if (_tabs[i].IsSelected) break;
+            }
+
+            _lastCategoryIndex = i;
+            SetCategory(null);
         }
 
         public void SetCategory(ModioUISearchCategory category)
         {
             if (_disableIfNoCategory != null) _disableIfNoCategory.SetActive(category != null);
+            _currentCategory = category;
 
             if(category == null) return;
 
             _setCategoryOnFrame = Time.frameCount;
 
-            SetTabs(category.Tabs);
+            if (_lastCategory is not null && _lastCategory == category) 
+                SetTabs(category.Tabs, _lastCategoryIndex);
+            else
+                SetTabs(category.Tabs);
 
             if (ModioUISearch.Default != null)
             {
@@ -60,13 +87,12 @@ namespace Modio.Unity.UI.Components
             _hasRunStart = true;
         }
 
-        public void SetTabs(IEnumerable<ModioUISearchSettings> tabSearches)
+        public void SetTabs(IEnumerable<ModioUISearchSettings> tabSearches, int startIndex = 0)
         {
             int index = 0;
 
-            var compUISettings = ModioClient.Settings.GetPlatformSettings<ModioComponentUISettings>();
-            bool showMonetizationUI = compUISettings is { ShowMonetizationUI: true, };
-                
+            bool showMonetizationUI = ModioClient.Settings.TryGetPlatformSettings(out MonetizationSettings _);
+
             foreach (ModioUISearchSettings search in tabSearches)
             {
                 if (!showMonetizationUI && search.HiddenIfMonetizationDisabled)
@@ -113,7 +139,7 @@ namespace Modio.Unity.UI.Components
                 // as group logic doesn't run if the group's gameobject is inactive
                 for (var i = 0; i < _tabs.Count; i++)
                 {
-                    _tabs[i].SetSelected(i == 0);
+                    _tabs[i].SetSelected(i == startIndex);
                 }
                 if (_activeTabCount == 1) _tabs[0].gameObject.SetActive(false);
             }

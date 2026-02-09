@@ -14,7 +14,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Modio.API.SchemaDefinitions{
     [JsonObject(NamingStrategyType = typeof(SnakeCaseNamingStrategy))]
-    internal readonly partial struct AddModfileRequest : IApiRequest
+    public readonly partial struct AddModfileRequest : IApiRequest
     {
         static readonly Dictionary<string, object> _bodyParameters = new Dictionary<string, object>();
 #nullable enable

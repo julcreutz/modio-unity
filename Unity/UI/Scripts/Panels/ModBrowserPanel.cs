@@ -1,3 +1,4 @@
+using System;
 using Modio.Extensions;
 using Modio.Unity.UI.Components.Localization;
 using Modio.Unity.UI.Input;
@@ -28,6 +29,20 @@ namespace Modio.Unity.UI.Panels
                 //Can't use Logger before the plugin is setup
                 Debug.LogWarning($"Your scene doesn't appear to have a ModioUILocalizationManager or custom localization handler. Consider adding the 'ModioUI_Localisation' prefab to your scene");
             }
+
+            ModioClient.OnShutdown += OnPluginShutdown;
+        }
+
+        protected override void OnDestroy()
+        {
+            ModioClient.OnShutdown -= OnPluginShutdown;
+            
+            base.OnDestroy();
+        }
+
+        void OnPluginShutdown()
+        {
+            ClosePanel();
         }
 
         public override void OnGainedFocus(GainedFocusCause selectionBehaviour)
@@ -173,6 +188,17 @@ namespace Modio.Unity.UI.Panels
         void OpenLogout()
         {
             ModioPanelManager.GetPanelOfType<ModioAuthenticationLogOutPanel>()?.OpenPanel();
+        }
+        
+        public void ReturnToBrowserView()
+        {
+            if (HasFocus) return;
+            
+            int attempts = 50;
+            while (ModioPanelManager.GetInstance()?.CurrentFocusedPanel is not ModBrowserPanel && attempts-- > 0)
+            {
+                ModioPanelManager.GetInstance()?.CurrentFocusedPanel.ClosePanel();
+            }
         }
     }
 }

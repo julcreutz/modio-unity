@@ -1,7 +1,9 @@
 ﻿using System;
 using Modio.Mods;
+using Modio.Monetization;
 using Modio.Unity.UI.Components.Localization;
 using Modio.Unity.UI.Panels;
+using Modio.Unity.UI.Panels.Authentication;
 using Modio.Unity.UI.Panels.Monetization;
 using TMPro;
 using UnityEngine;
@@ -18,6 +20,7 @@ namespace Modio.Unity.UI.Components.ModProperties
         [SerializeField] Button _unsubscribeButton;
 
         [SerializeField] Button _purchaseButton;
+        [SerializeField] GameObject _cannotPurchaseButton;
 
         [SerializeField] TMP_Text _text;
         [SerializeField] ModioUILocalizedText _localisedText;
@@ -37,13 +40,27 @@ namespace Modio.Unity.UI.Components.ModProperties
                     mod.IsSubscribed ? ModioUILocalizationKeys.Btn_Unsubscribe : ModioUILocalizationKeys.Btn_Subscribe
                 );
 
+
+
             var availableForPurchase = mod.IsMonetized && !mod.IsPurchased;
+
+            // If we can't get a matching SKU for the portal, PortalSku will be null
+            var disablePurchase =
+                ModioServices.Resolve<ModioSettings>()
+                             .TryGetPlatformSettings(out MonetizationSettings monetizationSettings) &&
+                monetizationSettings.MonetizationType == ModioMonetizationType.UsdMarketplace &&
+                mod.PortalSku == null;
 
             if (_purchaseButton != null)
             {
                 _purchaseButton.onClick.RemoveListener(PurchaseButtonClicked);
-                _purchaseButton.gameObject.SetActive(availableForPurchase);
+                _purchaseButton.gameObject.SetActive(availableForPurchase && !disablePurchase);
                 _purchaseButton.onClick.AddListener(PurchaseButtonClicked);
+            }
+
+            if (_cannotPurchaseButton != null)
+            {
+                _cannotPurchaseButton.gameObject.SetActive(availableForPurchase && disablePurchase);
             }
 
             if (_subscribeToggle != null)
@@ -122,7 +139,15 @@ namespace Modio.Unity.UI.Components.ModProperties
 
         void PurchaseButtonClicked()
         {
-            ModioPanelManager.GetPanelOfType<ModioConfirmPurchasePanel>().OpenPanel(_mod);
+            var settings = ModioServices.Resolve<ModioSettings>();
+
+            if (!settings.TryGetPlatformSettings(out MonetizationSettings monetizationSettings)) return;
+
+            if (monetizationSettings.MonetizationType == ModioMonetizationType.VirtualCurrency)
+                ModioPanelManager.GetPanelOfType<ModioConfirmPurchasePanel>().OpenPanel(_mod);
+            else
+                _ = ModioPanelManager.GetPanelOfType<ModioWaitingPanelGeneric>()
+                                     .OpenAndWaitForAsync(_mod?.Purchase(true));
         }
     }
 }

@@ -43,6 +43,7 @@ namespace Modio.Unity.UI.Scripts.Themes
         InputField,
         ModStat,
         ModDisplayLibraryStatus,
+        ModDisplayLibraryStatusWarning,
         ModTile = 400,
         BrowserBackground,
     }

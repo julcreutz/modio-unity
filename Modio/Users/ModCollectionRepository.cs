@@ -32,7 +32,7 @@ namespace Modio.Users
             if(anyChange) OnContentsChanged?.Invoke();
         }
 
-        public bool IsFollowed(ModId modId) => _followed.Any(mod => mod.Id == modId);
+        public bool IsFollowed(ModioId modId) => _followed.Any(mod => mod.Id == modId);
 
         public void Dispose()
         {

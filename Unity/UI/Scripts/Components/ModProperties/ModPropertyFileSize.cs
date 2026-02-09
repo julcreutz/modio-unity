@@ -1,4 +1,5 @@
 ﻿using System;
+using Modio.Collections;
 using Modio.Mods;
 using TMPro;
 using UnityEngine;
@@ -6,7 +7,7 @@ using UnityEngine;
 namespace Modio.Unity.UI.Components.ModProperties
 {
     [Serializable]
-    public class ModPropertyFileSize : IModProperty
+    public class ModPropertyFileSize : IModProperty, ICollectionProperty
     {
         [SerializeField] TMP_Text _text;
         [SerializeField, Tooltip(StringFormat.BYTES_FORMAT_TOOLTIP)]
@@ -18,5 +19,10 @@ namespace Modio.Unity.UI.Components.ModProperties
             StringFormat.Bytes(_format, mod.File.FileSize, _customFormat);
 
         bool IsCustomFormat() => _format == StringFormatBytes.Custom;
+
+        public void OnCollectionUpdate(ModCollection collection)
+        {
+            _text.text = StringFormat.Bytes(_format, collection.Filesize, _customFormat);
+        }
     }
 }

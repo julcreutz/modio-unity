@@ -2,6 +2,8 @@
 using System.Linq;
 using System.Threading.Tasks;
 using Modio.API.SchemaDefinitions;
+using Modio.Extensions;
+using Modio.Settings;
 using Newtonsoft.Json;
 
 namespace Modio.Mods
@@ -9,6 +11,7 @@ namespace Modio.Mods
     public class GameTagCategory
     {
         static GameTagCategory[] _cachedTags;
+        static GameTagCategory[] _cachedCollectionTags;
         
         public readonly string Name;
         public readonly bool MultiSelect;
@@ -31,7 +34,7 @@ namespace Modio.Mods
             MultiSelect = tagObject.Type == "checkboxes";
             Hidden = tagObject.Hidden;
             Locked = tagObject.Locked;
-            Tags = tagObject.Tags.Select(ModTag.Get).ToArray();
+            Tags = tagObject.Tags.Select(tagName => ModTag.Get(tagName)).ToArray();
             
             foreach ((string tagName, int count) in tagObject.TagCountMap)
             {
@@ -61,21 +64,65 @@ namespace Modio.Mods
             
             if (error)
             {
-                (Error readCacheError, GameData cachedGameData) = await ModioClient.DataStorage.ReadGameData();
-
-                //Note we return the web error, not the cache error, as that's more useful
-                if (readCacheError) return (error, Array.Empty<GameTagCategory>());
+                (Error readCacheError, GameData cachedGameData) = await GameData.GetGameDataFromDisk();
+                
+                if (readCacheError)
+                {
+                    //Note we return the web error, not the cache error, as that's more useful
+                    return (error, Array.Empty<GameTagCategory>());
+                }
                 
                 _cachedTags = cachedGameData.Categories;
                 return (Error.None, _cachedTags);
             }
 
             _cachedTags = gameTagOptionObjects.Value.Data.Select(options => new GameTagCategory(options)).ToArray();
-
-            var gameData = new GameData { Categories = _cachedTags, };
-            await ModioClient.DataStorage.WriteGameData(gameData);
+            
+            GameData.SetGameTags(_cachedTags).ForgetTaskSafely();
             
             return (Error.None, _cachedTags);
+        }
+
+        /// <summary>
+        /// Get the tags which are usable for collections. These are hardcoded
+        /// and not changeable per game.
+        /// </summary>
+        public static Task<(Error, GameTagCategory[])> GetCollectionTagOptions()
+        {
+            _cachedCollectionTags ??= new[]
+            {
+                new GameTagCategory(
+                    "Category",
+                    false,
+                    new[]
+                    {
+                        ModTag.Get("Miscellaneous", ResourceTagType.CollectionCategory),
+                        ModTag.Get("Essential", ResourceTagType.CollectionCategory),
+                        ModTag.Get("Themed", ResourceTagType.CollectionCategory),
+                    },
+                    false,
+                    false
+                ),
+                new GameTagCategory(
+                    "Tags",
+                    true,
+                    new[]
+                    {
+                        ModTag.Get("Animation", ResourceTagType.CollectionTag),
+                        ModTag.Get("Audio", ResourceTagType.CollectionTag),
+                        ModTag.Get("Bug Fixes", ResourceTagType.CollectionTag),
+                        ModTag.Get("Cheating", ResourceTagType.CollectionTag),
+                        ModTag.Get("Environment", ResourceTagType.CollectionTag),
+                        ModTag.Get("Gameplay", ResourceTagType.CollectionTag),
+                        ModTag.Get("Quality of Life", ResourceTagType.CollectionTag),
+                        ModTag.Get("UI", ResourceTagType.CollectionTag),
+                    },
+                    false,
+                    false
+                ),
+            };
+            
+            return Task.FromResult((Error.None, _cachedCollectionTags));
         }
     }
 }

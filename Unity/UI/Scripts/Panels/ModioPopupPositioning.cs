@@ -43,19 +43,21 @@ namespace Modio.Unity.UI.Panels
             var padding = axis == RectTransform.Axis.Horizontal ? _padding.horizontal : _padding.vertical;
 
             Vector3 pos = rectTransform.position;
+            
+            float scale = rectTransform.lossyScale.x;
 
             if (axis == RectTransform.Axis.Horizontal)
             {
-                bool usePreferredSide = containMax > targetMax + preferredSize + padding;
+                bool usePreferredSide = containMax > targetMax + (preferredSize + padding) * scale;
 
                 if (usePreferredSide)
-                    pos.x = targetMax + _padding.left;
+                    pos.x = targetMax + (_padding.left * scale);
                 else
-                    pos.x = targetMin - _padding.right - preferredSize;
+                    pos.x = targetMin - (_padding.right + preferredSize) * scale;
             }
             else
             {
-                pos.y = Mathf.Max(targetMin - _padding.top, containMin + preferredSize + _padding.bottom);
+                pos.y = Mathf.Max(targetMin - _padding.top * scale, containMin + (preferredSize + _padding.bottom) * scale);
             }
 
             rectTransform.position = pos;

@@ -1,11 +1,13 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using Modio.Mods;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace Modio.Unity.UI.Components.ModProperties
 {
-    public class ModPropertyTags : IModProperty
+    public class ModPropertyTags : ModioResourceProperty
     {
         [SerializeField] ModioUITag _tagTemplate;
         [SerializeField] GameObject _noTagsActive;
@@ -13,13 +15,13 @@ namespace Modio.Unity.UI.Components.ModProperties
 
         readonly List<ModioUITag> _tags = new List<ModioUITag>();
 
-        public void OnModUpdate(Mod mod)
+        protected override void OnResourceUpdate(IModioInfo resource)
         {
             if (!_tags.Any())
             {
                 if (_tagTemplate == null)
                 {
-                    bool anyTagsActive = mod.Tags.Any((tag) => tag.IsVisible);
+                    bool anyTagsActive = resource.Tags.Any((tag) => tag.IsVisible);
                     
                     if (_noTagsActive != null) _noTagsActive.SetActive(!anyTagsActive);
                     if (_tagsActive != null) _tagsActive.SetActive(anyTagsActive);
@@ -32,7 +34,7 @@ namespace Modio.Unity.UI.Components.ModProperties
 
             var visibleIndex = 0;
             
-            foreach (ModTag modTag in mod.Tags)
+            foreach (ModTag modTag in resource.Tags)
             {
                 if (visibleIndex >= _tags.Count)
                     _tags.Add(Object.Instantiate(_tags[0], _tags[0].transform.parent));

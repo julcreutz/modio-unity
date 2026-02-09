@@ -1,11 +1,15 @@
 ﻿using System;
+using Modio.Collections;
 using Modio.Mods;
 
 namespace Modio.Unity.UI.Components.ModProperties
 {
     [Serializable]
-    public class ModPropertyRatingsPositive : ModPropertyNumberBase
+    public class ModPropertyRatingsPositive : ModioPropertyNumberBase, IModProperty, ICollectionProperty
     {
-        protected override long GetValue(Mod mod) => mod.Stats.RatingsPositive;
+        public void OnModUpdate(Mod mod) => SetValue(mod.Stats.RatingsPositive);
+
+        public void OnCollectionUpdate(ModCollection collection)
+            => SetValue(collection.Stats.RatingsPositive);
     }
 }

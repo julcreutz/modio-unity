@@ -1,9 +1,8 @@
-﻿using Modio.Unity.UI.Components;
+﻿using Modio.Editor.Common;
+using Modio.Unity.UI.Components;
 using Modio.Unity.UI.Components.ModProperties;
 using Modio.Unity.UI.Components.SearchProperties;
 using Modio.Unity.UI.Components.UserProperties;
-using Modio.Unity.UI.Editor.Common;
-using Modio.Unity.UI.Scripts.Themes;
 using UnityEditor;
 using UnityEditorInternal;
 
@@ -38,6 +37,9 @@ namespace Modio.Unity.UI.Editor.Components
 
     [CustomEditor(typeof(ModioUIModProperties), true)]
     public class ModioUIModPropertiesEditor : ModioUIPropertiesBaseEditor<IModProperty> { }
+
+    [CustomEditor(typeof(ModioUICollectionProperties), true)]
+    public class ModioUICollectionPropertiesEditor : ModioUIPropertiesBaseEditor<ICollectionProperty> { }
 
     [CustomEditor(typeof(ModioUIUserProperties), true)]
     public class ModioUIUserPropertiesEditor : ModioUIPropertiesBaseEditor<IUserProperty> { }

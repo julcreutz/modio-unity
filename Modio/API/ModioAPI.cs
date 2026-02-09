@@ -1,9 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
-using Modio.API.HttpClient;
 using Modio.API.Interfaces;
+using Modio.API.SchemaDefinitions;
 using Modio.Authentication;
 using Modio.Errors;
 
@@ -169,7 +170,8 @@ namespace Modio.API
             _apiInterface = apiInterface;
             apiInterface.SetDefaultHeader("Accept", "application/json");
             SetResponseLanguage(LanguageCodeResponse);
-            apiInterface.SetDefaultHeader("User-Agent", Version.GetCurrent());
+            apiInterface.SetDefaultHeader("User-Agent", $"{Version.GetCurrent()}");
+
             SetPlatform(_platform);
             SetPortal(CurrentPortal);
 
@@ -213,6 +215,51 @@ namespace Modio.API
             return !error;
         } 
 
+        
+        /// <summary>
+        /// Crawls all pages
+        /// </summary>
+        /// <param name="filter"></param>
+        /// <param name="method"></param>
+        /// <typeparam name="F">The Filter type to use for this Crawl</typeparam>
+        /// <typeparam name="T">The Type of object expected from the crawl</typeparam>
+        /// <returns>
+        /// <p>An asynchronous task that returns a tuple (<see cref="Error"/> error, <see cref="List{T}"/> results), where:</p>
+        /// <p><c>error</c> is the error encountered during the task (if any)</p>
+        /// <p><c>results</c> is a list of the expected type users.</p>
+        /// </returns>
+        public static async Task<(Error error, List<T> results)> CrawlAllPages<F, T>(
+            F filter, 
+            Func<F, Task<(Error error, Pagination<T[]>?)>> method
+        ) 
+            where F : SearchFilter<F>
+        {
+            var output = new List<T>();
+            
+            while (true)
+            {
+                (Error error, Pagination<T[]>? result) 
+                    = await method(filter);
+
+                if (error)
+                {
+                    if (!error.IsSilent) 
+                        ModioLog.Warning?.Log($"Error crawling {method.Method.Name}: {error.GetMessage()}");
+                    return (error, new List<T>());
+                }
+
+                output.AddRange(result.Value.Data);
+
+                // Check for if we're on the last page, if not we increment the page number and iterate
+                if (result.Value.ResultOffset + result.Value.ResultCount < result.Value.ResultTotal)
+                    filter.PageIndex++;
+                else
+                    break;
+            }
+
+            return (Error.None, output);
+        }
+        
 #region GetHeader Extensions
 
         public static Platform PlatformFromHeader(string platform) => platform switch
@@ -249,7 +296,7 @@ namespace Modio.API
                 _                     => null,
             };
 
-        static string GetHeader(this Portal portal) => portal switch
+        internal static string GetHeader(this Portal portal) => portal switch
             {
                 Portal.Apple              => "apple",
                 Portal.Discord            => "discord",

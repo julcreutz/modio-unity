@@ -46,7 +46,7 @@ namespace Modio.Unity.UI.Components.SearchProperties
 
                 if (distanceFromBottom < _distanceFromBottomToLoadContent &&
                     _search != null &&
-                    _search.CanGetMoreMods &&
+                    _search.CanGetMoreResults &&
                     !_search.IsSearching)
                     _search.GetNextPageAdditivelyForLastSearch();
 

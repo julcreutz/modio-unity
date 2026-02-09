@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
-using Modio.Errors;
+using System.Threading.Tasks;
+using Modio.Extensions;
 using Modio.Mods;
 using Modio.Unity.UI.Components.Selectables;
 using Modio.Unity.UI.Search;
@@ -15,7 +16,7 @@ namespace Modio.Unity.UI.Components
         class TagEntry
         {
             public ModioUIToggle Toggle;
-            public string TagName;
+            public ModTag Tag;
         }
 
         [SerializeField] ModioUIToggle checkboxTagItemPrefab;
@@ -29,6 +30,7 @@ namespace Modio.Unity.UI.Components
         List<ModioUIFilterTagCategory> categoryItems = new List<ModioUIFilterTagCategory>();
         bool _hasRegisteredListener;
         bool _hasLocalChanges;
+        bool _showingCollectionTags;
 
         void Start()
         {
@@ -61,6 +63,7 @@ namespace Modio.Unity.UI.Components
         void OnDisable()
         {
             ModioUISearch.Default.OnSearchUpdatedUnityEvent.RemoveListener(UpdateActiveTags);
+            _hasLocalChanges = false;
         }
 
         public GameObject GetDefaultSelection()
@@ -78,15 +81,28 @@ namespace Modio.Unity.UI.Components
 
             var currentFilter = ModioUISearch.Default.LastSearchFilter;
 
+            var collectionSearch = ModioUISearch.Default.LastSearchPreset == SpecialSearchType.SearchCollections;
+
+            if (collectionSearch != _showingCollectionTags)
+            {
+                UpdateTags(collectionSearch).ForgetTaskSafely();
+            }
+
             foreach (var tagItem in checkboxTagItems)
             {
-                tagItem.Toggle.isOn = currentFilter.GetTags().Contains(tagItem.TagName);
+                if(tagItem.Tag.TagType == ResourceTagType.CollectionCategory)
+                    tagItem.Toggle.isOn = currentFilter.GetCollectionCategory() == tagItem.Tag.ApiName;
+                else
+                    tagItem.Toggle.isOn = currentFilter.GetTags().Contains(tagItem.Tag.ApiName);
             }
+
+            //Setting the toggles above will flag as local changes; reset that
+            _hasLocalChanges = false;
         }
 
         public void ApplyFilter()
         {
-            var tags = checkboxTagItems.Where(tagItem => tagItem.Toggle.isOn).Select(tagItem => tagItem.TagName);
+            var tags = checkboxTagItems.Where(tagEntry => tagEntry.Toggle.isOn).Select(tagItem => tagItem.Tag);
             _hasLocalChanges = false;
             ModioUISearch.Default.ApplyTagsToSearch(tags);
         }
@@ -100,9 +116,18 @@ namespace Modio.Unity.UI.Components
             _hasLocalChanges = false;
         }
 
-        async void UpdateTags()
+        void UpdateTags() => UpdateTags(false).ForgetTaskSafely();
+        
+        async Task UpdateTags(bool collectionTags)
         {
-            (Error error, GameTagCategory[] tagCategories) = await GameTagCategory.GetGameTagOptions();
+            Error error;
+            GameTagCategory[] tagCategories;
+            if(collectionTags)
+                (error, tagCategories) = await GameTagCategory.GetCollectionTagOptions();
+            else
+                (error, tagCategories) = await GameTagCategory.GetGameTagOptions();
+
+            _showingCollectionTags = collectionTags;
             
             _hasLocalChanges = false;
 
@@ -182,7 +207,7 @@ namespace Modio.Unity.UI.Components
                         new TagEntry
                         {
                             Toggle = item,
-                            TagName = tag1.NameLocalized
+                            Tag = tag1,
                         }
                     );
 

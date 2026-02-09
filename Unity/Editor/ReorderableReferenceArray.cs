@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
@@ -8,7 +7,7 @@ using UnityEngine;
 
 namespace Modio.Editor.Common
 {
-    internal static class ReorderableReferenceArray
+    public static class ReorderableReferenceArray
     {
         static readonly float Padding = EditorGUIUtility.singleLineHeight * 0.5f;
 
@@ -89,7 +88,9 @@ namespace Modio.Editor.Common
 
             static string GetElementHeading(SerializedProperty element, int prefixLength, string nameHintPropertyName)
             {
-                string typeName = ObjectNames.NicifyVariableName(element.managedReferenceFullTypename.Substring(element.managedReferenceFullTypename.LastIndexOf('.') + prefixLength + 1));
+                prefixLength = (element.managedReferenceFullTypename.LastIndexOf('.') + prefixLength + 1);
+                if (prefixLength >= element.managedReferenceFullTypename.Length) prefixLength = 0;
+                string typeName = ObjectNames.NicifyVariableName(element.managedReferenceFullTypename[prefixLength..]);
 
                 if (string.IsNullOrEmpty(nameHintPropertyName)) return typeName;
 

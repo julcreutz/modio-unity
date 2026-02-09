@@ -6,6 +6,9 @@
 
         public const string Btn_Unsubscribe = "modio_btn_unsubscribe";
         public const string Btn_Subscribe   = "modio_btn_subscribe";
+        
+        public const string Btn_Unfollow = "modio_btn_unfollow";
+        public const string Btn_Follow   = "modio_btn_follow";
 
         public const string Modstate_Queued       = "modio_modstate_queued";
         public const string Modstate_Downloading  = "modio_modstate_downloading";

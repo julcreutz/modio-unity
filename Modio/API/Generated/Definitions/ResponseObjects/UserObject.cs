@@ -7,7 +7,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Modio.API.SchemaDefinitions{
     [JsonObject]
-    internal readonly partial struct UserObject 
+    public readonly partial struct UserObject 
     {
         /// <summary>Unique id of the user.</summary>
         internal readonly long Id;

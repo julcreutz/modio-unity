@@ -67,14 +67,24 @@ namespace Modio.Unity.UI.Panels.Authentication
             if (ModioClient.AuthService != null 
                 && ModioClient.AuthService is not IPotentialModioEmailAuthService { IsEmailPlatform: true, }
                 && User.Current is not null
-                && User.Current.AuthenticatedPortal != ModioAPI.Portal.None
+                && (User.Current.AuthenticatedPortal != ModioAPI.Portal.None
+                    || !ModioUnityMultiplatformAuthResolver.IsSupportedPlatform)
             ) {
-                var authService = ModioServices.GetBindings<IModioAuthService>()
+                IModioAuthService authService = null;
+                
+                if (ModioUnityMultiplatformAuthResolver.IsSupportedPlatform)
+                {
+                    authService = ModioServices.GetBindings<IModioAuthService>()
                                                .ResolveAll()
                                                .FirstOrDefault(binding => binding.service.Portal ==
                                                                           User.Current.AuthenticatedPortal
                                                )
                                                .service;
+                }
+                else
+                {
+                    authService = ModioServices.Resolve<IModioAuthService>();
+                }
 
                 if (authService is not null)
                 {
@@ -83,7 +93,7 @@ namespace Modio.Unity.UI.Panels.Authentication
                     return;
                 }
             }
-
+            
             if (ModioUnityMultiplatformAuthResolver.IsSupportedPlatform)
             {
                 OpenPanel();

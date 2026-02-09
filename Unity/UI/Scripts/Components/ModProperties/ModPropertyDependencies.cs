@@ -1,4 +1,5 @@
 ﻿using System;
+using Modio.Collections;
 using Modio.Mods;
 using Modio.Unity.UI.Search;
 using TMPro;
@@ -6,6 +7,16 @@ using UnityEngine;
 
 namespace Modio.Unity.UI.Components.ModProperties
 {
+    [Serializable]
+    public class CollectionPropertyContentMods : ICollectionProperty
+    {
+        [SerializeField] ModioUISearch _searchMods;
+        
+        public void OnCollectionUpdate(ModCollection collection)
+        {
+            _searchMods.SetSearchForCollectionMods(collection);
+        }
+    }
     [Serializable]
     public class ModPropertyDependencies : IModProperty
     {
