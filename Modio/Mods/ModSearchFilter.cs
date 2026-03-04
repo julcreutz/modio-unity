@@ -51,6 +51,12 @@ namespace Modio.Mods
         List<string> _tags;
         List<UserProfile> _users;
         string _collectionCategory;
+        long? _minDateAdded;
+        long? _maxDateAdded;
+        long? _minDateUpdated;
+        long? _maxDateUpdated;
+        long? _minDateLive;
+        long? _maxDateLive;
         
         public bool ShowMatureContent { get; set; }
         public SearchFilterPlatformStatus PlatformStatus  { get; set; } = SearchFilterPlatformStatus.None;
@@ -166,6 +172,15 @@ namespace Modio.Mods
         }
         
         public string GetCollectionCategory() => _collectionCategory;
+
+        public void SetMinDateAdded(DateTime? min) => _minDateAdded = min.HasValue ? ((DateTimeOffset) min).ToUnixTimeSeconds() : null;
+        public void SetMaxDateAdded(DateTime? max) => _maxDateAdded = max.HasValue ? ((DateTimeOffset) max).ToUnixTimeSeconds() : null;
+
+        public void SetMinDateUpdated(DateTime? min) => _minDateUpdated = min.HasValue ? ((DateTimeOffset) min).ToUnixTimeSeconds() : null;
+        public void SetMaxDateUpdated(DateTime? max) => _maxDateUpdated = max.HasValue ? ((DateTimeOffset) max).ToUnixTimeSeconds() : null;
+
+        public void SetMinDateLive(DateTime? min) => _minDateLive = min.HasValue ? ((DateTimeOffset) min).ToUnixTimeSeconds() : null;
+        public void SetMaxDateLive(DateTime? max) => _maxDateLive = max.HasValue ? ((DateTimeOffset) max).ToUnixTimeSeconds() : null;
         
         /// <summary>
         /// Adds a specific user to the filter, so that mods that were not created by the user
@@ -196,6 +211,15 @@ namespace Modio.Mods
             
             if(_collectionCategory != null)
                 filter.CollectionCategory(_collectionCategory);
+
+            if (_minDateAdded != null) filter.DateAdded(_minDateAdded.Value, Filtering.Min);
+            if (_maxDateAdded != null) filter.DateAdded(_maxDateAdded.Value, Filtering.Max);
+
+            if (_minDateUpdated != null) filter.DateAdded(_minDateUpdated.Value, Filtering.Min);
+            if (_maxDateUpdated != null) filter.DateAdded(_maxDateUpdated.Value, Filtering.Max);
+
+            if (_minDateLive != null) filter.DateAdded(_minDateLive.Value, Filtering.Min);
+            if (_maxDateLive != null) filter.DateAdded(_maxDateLive.Value, Filtering.Max);
 
             filter.MaturityOption(ShowMatureContent ? 0b1111 : 0b0000,
                 ShowMatureContent ? Filtering.BitwiseAnd : Filtering.None);
